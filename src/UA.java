@@ -16,7 +16,7 @@ public class UA {
 				userLayer.startListeningNetwork();
 			}
 		}.start();
-		
+
 		userLayer.autoRegistering();
 		userLayer.startListeningKeyboard();
 	}

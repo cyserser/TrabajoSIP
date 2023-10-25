@@ -5,6 +5,8 @@ import java.net.SocketException;
 
 import mensajesSIP.InviteMessage;
 import mensajesSIP.RegisterMessage;
+import mensajesSIP.OKMessage;
+import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SIPMessage;
 
 public class UaTransactionLayer {
@@ -45,6 +47,20 @@ public class UaTransactionLayer {
 				break;
 			}
 		} 
+		
+		// 200 ok
+		else if(sipMessage instanceof OKMessage) {
+			OKMessage okMessage = (OKMessage) sipMessage;
+			if(okMessage != null)
+			userLayer.onOKReceived(okMessage);
+		}
+		
+		// 404 not found
+		else if(sipMessage instanceof NotFoundMessage) {
+			NotFoundMessage notFoundMessage = (NotFoundMessage) sipMessage;
+			if(notFoundMessage != null)
+			userLayer.onNotFoundReceived(notFoundMessage);
+		}
 		else {
 			System.err.println("Unexpected message, throwing away");
 		}

@@ -11,6 +11,8 @@ import java.util.UUID;
 import common.FindMyIPv4;
 import mensajesSIP.InviteMessage;
 import mensajesSIP.RegisterMessage;
+import mensajesSIP.OKMessage;
+import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
 
 public class UaUserLayer {
@@ -46,7 +48,17 @@ public class UaUserLayer {
 	
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
 		System.out.println("Received REGISTER from " + registerMessage.getFromName());
-		state = IDLE;
+		//state = IDLE;
+		runVitextServer();
+	}
+	public void onOKReceived(OKMessage okMessage) throws IOException {
+		System.out.println(okMessage.toStringMessage());
+		//state = IDLE;
+		runVitextServer();
+	}
+	public void onNotFoundReceived(NotFoundMessage notFoundMessge) throws IOException {
+		System.out.println(notFoundMessge.toStringMessage());
+		//state = IDLE;
 		runVitextServer();
 	}
 
@@ -70,7 +82,7 @@ public class UaUserLayer {
 			e.printStackTrace();
 		}
 	}
-	//REGISTRO AUTOMÁTICO AL INICIAR
+	//REGISTRO AUTOMÁTICO AL INICIAR SIN CREDENCIALES
 	public void autoRegistering() {
 		try {
 			commandRegister("");
@@ -159,15 +171,17 @@ public class UaUserLayer {
 		runVitextClient();
 
 		String callId = UUID.randomUUID().toString();
-
-
+		String userURIString = userURI.substring(0, userURI.indexOf("@"));
+		
 		RegisterMessage registerMessage = new RegisterMessage();
+	
+		
 		registerMessage.setDestination("sip:bob@SMA");
 		registerMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
 		registerMessage.setMaxForwards(70);
 		registerMessage.setToName("Bob");
 		registerMessage.setToUri("sip:bob@SMA");
-		registerMessage.setFromName(userURI.substring(0, userURI.indexOf("@")));
+		registerMessage.setFromName(userURIString);
 		registerMessage.setFromUri("sip:"+userURI);
 		registerMessage.setCallId(callId);
 		registerMessage.setcSeqNumber("1");

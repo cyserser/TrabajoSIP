@@ -1,7 +1,7 @@
 /*
- * Código de base para parsear mensajes SIP
+ * Cï¿½digo de base para parsear mensajes SIP
  * Puede ser adaptado, ampliado, modificado por el alumno
- * según sus necesidades para la práctica
+ * segï¿½n sus necesidades para la prï¿½ctica
  */
 package mensajesSIP;
 
@@ -104,7 +104,7 @@ public class OKMessage extends SIPMessage {
     }
 
 /**
- * Recupera el recordRoute. El recordRoute será un String que contiene la concatenación de los puntos intermedios de la llamada por los que tienen que pasar los futuros mensajes. Será una lista separada por comas. El API lo gestiona como un String sin separar cada uno de los puntos intermedios que se incluyen.
+ * Recupera el recordRoute. El recordRoute serï¿½ un String que contiene la concatenaciï¿½n de los puntos intermedios de la llamada por los que tienen que pasar los futuros mensajes. Serï¿½ una lista separada por comas. El API lo gestiona como un String sin separar cada uno de los puntos intermedios que se incluyen.
  * 
  * @return      el recordRoute
  */
@@ -114,7 +114,7 @@ public class OKMessage extends SIPMessage {
     }
 
 /**
- * Establece el recordRoute. El recordRoute será un String que contiene la concatenación de los puntos intermedios de la llamada por los que tienen que pasar los futuros mensajes. Será una lista separada por comas. El API lo gestiona como un String sin separar cada uno de los puntos intermedios que se incluyen.
+ * Establece el recordRoute. El recordRoute serï¿½ un String que contiene la concatenaciï¿½n de los puntos intermedios de la llamada por los que tienen que pasar los futuros mensajes. Serï¿½ una lista separada por comas. El API lo gestiona como un String sin separar cada uno de los puntos intermedios que se incluyen.
  * 
  * @param 	recordRoute
  */
@@ -183,9 +183,9 @@ public class OKMessage extends SIPMessage {
             ok += "Expires: " + expires + "\n";
         ok += "Content-Length: " + contentLength + "\n";
         ok += "\n";
-        if(sdp!=null){
+        /*if(sdp!=null){
             ok += sdp.toStringMessage();
-        }
+        }*/
 
         return ok;
     }

@@ -5,7 +5,9 @@ import java.net.SocketException;
 
 import mensajesSIP.InviteMessage;
 import mensajesSIP.RegisterMessage;
+import mensajesSIP.OKMessage;
 import mensajesSIP.SIPMessage;
+import mensajesSIP.NotFoundMessage;
 
 public class ProxyTransactionLayer {
 	private static final int IDLE = 0;
@@ -52,6 +54,16 @@ public class ProxyTransactionLayer {
 	}
 	public void echoRegister(RegisterMessage registerMessage, String address, int port) throws IOException {
 		transportLayer.send(registerMessage, address, port);
+	}
+	
+	// mensaje 200 OK
+	public void echoOK(OKMessage okMessage, String address, int port) throws IOException {
+		transportLayer.send(okMessage, address, port);
+	}
+	
+	// mensaje 404 not found
+	public void echoNotfound(NotFoundMessage notFoundMessage, String address, int port) throws IOException {
+		transportLayer.send(notFoundMessage, address, port);
 	}
 
 	public void startListening() {

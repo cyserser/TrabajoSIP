@@ -48,7 +48,7 @@ public class UaTransportLayer {
 				DatagramPacket packet = new DatagramPacket(buf, buf.length);
 				socket.receive(packet);
 				String msg = new String(packet.getData());
-				System.out.println(msg);
+				//System.out.println(msg);
 				SIPMessage sipMessage = SIPMessage.parseMessage(msg);
 				transactionLayer.onMessageReceived(sipMessage);
 			} catch (Exception e) {
