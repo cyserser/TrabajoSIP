@@ -7,10 +7,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import common.FindMyIPv4;
 import mensajesSIP.InviteMessage;
 import mensajesSIP.RegisterMessage;
+import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
@@ -19,6 +22,8 @@ public class UaUserLayer {
 	private static final int IDLE = 0;
 	private static final int REGISTERING = 1;
 	private int state = REGISTERING;
+	private String Message = "";
+	private int counter=0;
 
 	public static final ArrayList<Integer> RTPFLOWS = new ArrayList<Integer>(
 			Arrays.asList(new Integer[] { 96, 97, 98 }));
@@ -53,11 +58,13 @@ public class UaUserLayer {
 	}
 	public void onOKReceived(OKMessage okMessage) throws IOException {
 		System.out.println(okMessage.toStringMessage());
+		this.Message = "OK";
 		//state = IDLE;
 		runVitextServer();
 	}
-	public void onNotFoundReceived(NotFoundMessage notFoundMessge) throws IOException {
-		System.out.println(notFoundMessge.toStringMessage());
+	public void onNotFoundReceived(NotFoundMessage notFoundMessage) throws IOException {
+		System.out.println(notFoundMessage.toStringMessage());
+		this.Message = "NOT FOUND";
 		//state = IDLE;
 		runVitextServer();
 	}
@@ -86,6 +93,40 @@ public class UaUserLayer {
 	public void autoRegistering() {
 		try {
 			commandRegister("");
+			Timer timer = new Timer();
+			
+			int time = 2;
+	        TimerTask task = new TimerTask() {
+	            @Override
+	            public void run() {
+	                // Coloca la acción que deseas ejecutar aquí
+	                try {
+	                	if (Message.length()==0) {
+	                		if(counter>=2) {
+		                		commandRegister("");
+		                		System.out.println("El valor del temporizador es: " + counter +"s");
+		                	}
+							counter=counter+time;
+	                	}
+	                	
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	                if(counter>10) {
+	                	try {
+	                		System.out.println(commandTimeout("").toStringMessage());
+	                		timer.cancel();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+	                }
+	            }
+	        };
+
+	        // Programar el Timer para que se ejecute cada 2 segundos
+	        timer.scheduleAtFixedRate(task, 0, time*1000);
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -191,8 +232,37 @@ public class UaUserLayer {
 		registerMessage.setExpires("2");
 		registerMessage.setContentLength(registerMessage.toStringMessage().getBytes().length);
 
+		
 		transactionLayer.callR(registerMessage);
+	
 	}
+	
+	private RequestTimeoutMessage commandTimeout(String line) throws IOException {
+		stopVitextServer();
+		stopVitextClient();
+		
+		System.out.println("Registering...");
+
+		runVitextClient();
+
+		String callId = UUID.randomUUID().toString();
+		String userURIString = userURI.substring(0, userURI.indexOf("@"));
+		
+		RequestTimeoutMessage timeout = new RequestTimeoutMessage();
+	
+		timeout.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
+		timeout.setToName("Bob");
+		timeout.setToUri("sip:bob@SMA");
+		timeout.setFromName(userURIString);
+		timeout.setFromUri("sip:"+userURI);
+		timeout.setCallId(callId);
+		timeout.setcSeqNumber("1");
+		timeout.setcSeqStr("REGISTER");
+		timeout.setContentLength(timeout.toStringMessage().getBytes().length);
+		
+		return timeout;
+	}
+		
 
 	private void runVitextClient() throws IOException {
 		//vitextClient = Runtime.getRuntime().exec("xterm -e vitext/vitextclient -p 5000 239.1.2.3");

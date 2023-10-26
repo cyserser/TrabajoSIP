@@ -37,8 +37,8 @@ public class ProxyUserLayer {
 	
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
 		System.out.println("Received REGISTER from " + registerMessage.getFromName());
-		System.out.println(registerMessage.getFromName());
-		System.out.println(validUsers.get(0).toString());
+		//System.out.println(registerMessage.getFromName());
+		//System.out.println(validUsers.get(0).toString());
 		
 		ArrayList<String> vias = registerMessage.getVias();
 		String origin = vias.get(0);
