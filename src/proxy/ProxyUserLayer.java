@@ -14,15 +14,14 @@ import mensajesSIP.SDPMessage;
 
 public class ProxyUserLayer {
 	private ProxyTransactionLayer transactionLayer;
-	private ArrayList<String> validUsers;
+	
 	private String originAddress;
 	private int originPort;
+	private ProxyWhiteListArray whiteList;
 
 	public ProxyUserLayer(int listenPort) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
-		this.validUsers = new ArrayList<String>();
-		this.validUsers.add("alice");
-		this.validUsers.add("bob");
+		this.whiteList = new ProxyWhiteListArray();
 	}
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
@@ -38,7 +37,7 @@ public class ProxyUserLayer {
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
 		System.out.println("Received REGISTER from " + registerMessage.getFromName());
 		//System.out.println(registerMessage.getFromName());
-		//System.out.println(validUsers.get(0).toString());
+		//System.out.println("hgh "+ whiteList.getWhiteList().get(0).getUserURI());
 		
 		ArrayList<String> vias = registerMessage.getVias();
 		String origin = vias.get(0);
@@ -46,19 +45,25 @@ public class ProxyUserLayer {
 		originAddress = originParts[0];
 		originPort = Integer.parseInt(originParts[1]);
 		
+		int whiteListSize = whiteList.getWhiteList().size();
+		
 		//Comprobar si el usuario esta en la lista
-		for(int i = 0; i < validUsers.size(); i++)
+		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(validUsers.get(i).equals(registerMessage.getFromName())) {
+			if(getFromWhiteList(i).equals(registerMessage.getFromName())) {
 				
 				transactionLayer.echoOK(OKMessage(), originAddress, originPort);
 				return;
 			}
-			
 		}
-		
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
 		System.out.println("UNKNOWN USER");
+	}
+
+	private String getFromWhiteList(int i) {
+		String whiteListUser;
+		whiteListUser = whiteList.getWhiteList().get(i).getUserURI().substring(0, whiteList.getWhiteList().get(i).getUserURI().indexOf("@"));
+		return whiteListUser;
 	}
 	
 	// 200 OK message

@@ -44,6 +44,7 @@ public class UaUserLayer {
 		this.listenPort = listenPort;
 		this.rtpPort = listenPort + 1;
 		this.userURI = userURI;
+		System.out.println("hola"+ userURI);
 	}
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
@@ -93,45 +94,50 @@ public class UaUserLayer {
 	public void autoRegistering() {
 		try {
 			commandRegister("");
-			Timer timer = new Timer();
 			
-			int time = 2;
-	        TimerTask task = new TimerTask() {
-	            @Override
-	            public void run() {
-	                // Coloca la acción que deseas ejecutar aquí
-	                try {
-	                	if (Message.length()==0) {
-	                		if(counter>=2) {
-		                		commandRegister("");
-		                		System.out.println("El valor del temporizador es: " + counter +"s");
-		                	}
-							counter=counter+time;
-	                	}
-	                	
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-	                if(counter>10) {
-	                	try {
-	                		System.out.println(commandTimeout("").toStringMessage());
-	                		timer.cancel();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-	                }
-	            }
-	        };
-
-	        // Programar el Timer para que se ejecute cada 2 segundos
-	        timer.scheduleAtFixedRate(task, 0, time*1000);
+			ourTimer();
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	private void ourTimer() {
+		Timer timer = new Timer();
+		
+		int time = 2;
+		TimerTask task = new TimerTask() {
+		    @Override
+		    public void run() {
+		        // Coloca la acción que deseas ejecutar aquí
+		        try {
+		        	if (Message.length()==0) {
+		        		if(counter>=2) {
+		            		commandRegister("");
+		            		System.out.println("El valor del temporizador es: " + counter +"s");
+		            	}
+						counter=counter+time;
+		        	}
+		        	
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		        if(counter>10) {
+		        	try {
+		        		System.out.println(commandTimeout("").toStringMessage());
+		        		timer.cancel();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+		        }
+		    }
+		};
+
+		// Programar el Timer para que se ejecute cada 2 segundos
+		timer.scheduleAtFixedRate(task, 0, time*1000);
 	}
 
 	private void prompt() {
