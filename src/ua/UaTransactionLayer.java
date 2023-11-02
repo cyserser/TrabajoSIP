@@ -12,7 +12,7 @@ import mensajesSIP.SIPMessage;
 public class UaTransactionLayer {
 	private static final int IDLE = 0;
 	private static final int REGISTERING = 1;
-	private int state = REGISTERING;
+	private int state;
 
 	private UaUserLayer userLayer;
 	private UaTransportLayer transportLayer;
@@ -26,13 +26,14 @@ public class UaTransactionLayer {
 	public void onMessageReceived(SIPMessage sipMessage) throws IOException {
 		if (sipMessage instanceof InviteMessage) {
 			InviteMessage inviteMessage = (InviteMessage) sipMessage;
+			String estado = inviteMessage.getcSeqStr();
 			
 			switch (state) {
 			case IDLE:
 				userLayer.onInviteReceived(inviteMessage);
 				break;
 			default:
-				System.err.println("Unexpected message, throwing away");
+				System.err.println("Unexpected message, throwing away (INVITE)");
 				break;
 			}
 		} 
@@ -43,7 +44,7 @@ public class UaTransactionLayer {
 				userLayer.onRegisterReceived(registerMessage);
 				break;
 			default:
-				System.err.println("Unexpected message, throwing away");
+				System.err.println("Unexpected message, throwing away (REGISTER)");
 				break;
 			}
 		} 
@@ -62,7 +63,7 @@ public class UaTransactionLayer {
 			userLayer.onNotFoundReceived(notFoundMessage);
 		}
 		else {
-			System.err.println("Unexpected message, throwing away");
+			System.err.println("Unexpected message, throwing away (RESTO)");
 		}
 	}
 

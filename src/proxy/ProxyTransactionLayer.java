@@ -24,28 +24,29 @@ public class ProxyTransactionLayer {
 
 	public void onMessageReceived(SIPMessage sipMessage) throws IOException {
 		if (sipMessage instanceof InviteMessage) {
+			state = IDLE;
 			InviteMessage inviteMessage = (InviteMessage) sipMessage;
 			switch (state) {
 			case IDLE:
 				userLayer.onInviteReceived(inviteMessage);
 				break;
 			default:
-				System.err.println("Unexpected message, throwing away");
+				System.err.println("Unexpected message, throwing away (INVITE)");
 				break;
 			}
 		}
-		if (sipMessage instanceof RegisterMessage) {
+		else if (sipMessage instanceof RegisterMessage) {
 			RegisterMessage registerMessage = (RegisterMessage) sipMessage;
 			switch (state) {
 			case REGISTERING:
 				userLayer.onRegisterReceived(registerMessage);
 				break;
 			default:
-				System.err.println("Unexpected message, throwing away");
+				System.err.println("Unexpected message, throwing away (REGISTER)");
 				break;
 			}
 		} else {
-			System.err.println("Unexpected message, throwing away");
+			System.err.println("Unexpected message, throwing away (REST)");
 		}
 	}
 

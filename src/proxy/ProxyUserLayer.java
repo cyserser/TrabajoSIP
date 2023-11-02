@@ -32,6 +32,23 @@ public class ProxyUserLayer {
 		String originAddress = originParts[0];
 		int originPort = Integer.parseInt(originParts[1]);
 		transactionLayer.echoInvite(inviteMessage, originAddress, originPort);
+		
+		int whiteListSize = whiteList.getWhiteList().size();
+		System.out.println("++++++++++++ " + inviteMessage.getToName());
+		System.out.println("------------ " + inviteMessage.getFromName());
+		System.out.println("------------ " + getFromWhiteList(0));
+		System.out.println("------------ " + getFromWhiteList(1));
+		//Comprobar si el usuario esta en la lista
+		for(int i = 0; i < whiteListSize; i++)
+		{
+			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getToName())) {
+				
+				transactionLayer.echoOK(OKMessage(), originAddress, originPort);
+				return;
+			}
+		}
+		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+		System.out.println("UNKNOWN USER");
 	}
 	
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {

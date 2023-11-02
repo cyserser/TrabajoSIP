@@ -28,6 +28,7 @@ public class UaTransportLayer {
 
 	public void sendToProxy(SIPMessage sipMessage) throws IOException {
 		send(sipMessage.toStringMessage().getBytes(), this.proxyAddress, this.proxyPort);
+		
 	}
 
 	public void send(SIPMessage sipMessage, String address, int port) throws IOException {

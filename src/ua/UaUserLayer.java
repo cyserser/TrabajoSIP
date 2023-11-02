@@ -21,7 +21,7 @@ import mensajesSIP.SDPMessage;
 public class UaUserLayer {
 	private static final int IDLE = 0;
 	private static final int REGISTERING = 1;
-	private int state = REGISTERING;
+	private int state;
 	private String Message = "";
 	private int counter=0;
 
@@ -54,13 +54,14 @@ public class UaUserLayer {
 	
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
 		System.out.println("Received REGISTER from " + registerMessage.getFromName());
-		//state = IDLE;
+		state = IDLE;
 		runVitextServer();
 	}
 	public void onOKReceived(OKMessage okMessage) throws IOException {
 		System.out.println(okMessage.toStringMessage());
 		this.Message = "OK";
-		//state = IDLE;
+		state = IDLE;
+		prompt();
 		runVitextServer();
 	}
 	public void onNotFoundReceived(NotFoundMessage notFoundMessage) throws IOException {
@@ -92,8 +93,9 @@ public class UaUserLayer {
 	}
 	//REGISTRO AUTOMÁTICO AL INICIAR SIN CREDENCIALES
 	public void autoRegistering() {
+		state = REGISTERING;
 		try {
-			commandRegister("");
+			commandRegister("", state);
 			
 			ourTimer();
 			
@@ -114,7 +116,7 @@ public class UaUserLayer {
 		        try {
 		        	if (Message.length()==0) {
 		        		if(counter>=2) {
-		            		commandRegister("");
+		            		commandRegister("", state);
 		            		System.out.println("El valor del temporizador es: " + counter +"s");
 		            	}
 						counter=counter+time;
@@ -156,26 +158,39 @@ public class UaUserLayer {
 	}
 
 	private void promptIdle() {
+		state = IDLE;
 		System.out.println("INVITE xxx");
 	}
 	
 	private void promptRegistering() {
+		state = REGISTERING;
 		System.out.println("REGISTER xxx");
 	}
 
 	private void command(String line) throws IOException {
 		if (line.startsWith("INVITE")) {
-			commandInvite(line);
+			commandInvite(line, state);
 		} 
-		if (line.startsWith("REGISTER")) {
-			commandRegister(line);
+		else if (line.startsWith("REGISTER")) {
+			commandRegister(line, state);
+			
 		} 
 		else {
 			System.out.println("Bad command");
 		}
 	}
 
-	private void commandInvite(String line) throws IOException {
+	public int checkState() {
+		if(state == IDLE) {
+			
+		}
+		else if(state == REGISTERING) {
+			
+		}
+		return state;
+	}
+	
+	private void commandInvite(String line, int state ) throws IOException {
 		stopVitextServer();
 		stopVitextClient();
 		
@@ -184,7 +199,9 @@ public class UaUserLayer {
 		runVitextClient();
 
 		String callId = UUID.randomUUID().toString();
-
+		String nameToSend = line.substring(line.indexOf(" ")).trim();
+		System.out.println(nameToSend);
+		
 		SDPMessage sdpMessage = new SDPMessage();
 		sdpMessage.setIp(this.myAddress);
 		sdpMessage.setPort(this.rtpPort);
@@ -194,7 +211,7 @@ public class UaUserLayer {
 		inviteMessage.setDestination("sip:bob@SMA");
 		inviteMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
 		inviteMessage.setMaxForwards(70);
-		inviteMessage.setToName("Bob");
+		inviteMessage.setToName(nameToSend);
 		inviteMessage.setToUri("sip:bob@SMA");
 		inviteMessage.setFromName("Alice");
 		inviteMessage.setFromUri("sip:alice@SMA");
@@ -209,7 +226,7 @@ public class UaUserLayer {
 		transactionLayer.call(inviteMessage);
 	}
 	
-	private void commandRegister(String line) throws IOException {
+	private void commandRegister(String line, int state) throws IOException {
 		stopVitextServer();
 		stopVitextClient();
 		
