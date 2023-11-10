@@ -30,4 +30,9 @@ public class ProxyWhiteListArray {
 		this.whiteList.add(whiteListAlice);
 		this.whiteList.add(whiteListBob);
 	}
+	public void insertToWhiteList(int port, String direccion)
+	{
+		ProxyWhiteList whiteListNew = new ProxyWhiteList("alice@SMA", "loqueseea", 2, 2);
+		this.whiteList.add(whiteListNew);
+	}
 }

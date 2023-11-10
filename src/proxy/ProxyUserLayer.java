@@ -11,6 +11,7 @@ import mensajesSIP.RegisterMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
+import mensajesSIP.TryingMessage;
 
 public class ProxyUserLayer {
 	private ProxyTransactionLayer transactionLayer;
@@ -31,19 +32,23 @@ public class ProxyUserLayer {
 		String[] originParts = origin.split(":");
 		String originAddress = originParts[0];
 		int originPort = Integer.parseInt(originParts[1]);
-		transactionLayer.echoInvite(inviteMessage, originAddress, originPort);
 		
 		int whiteListSize = whiteList.getWhiteList().size();
-		System.out.println("++++++++++++ " + inviteMessage.getToName());
-		System.out.println("------------ " + inviteMessage.getFromName());
-		System.out.println("------------ " + getFromWhiteList(0));
-		System.out.println("------------ " + getFromWhiteList(1));
+		System.out.println("\n");
+		System.out.println("Se quiere invitar a: " + inviteMessage.getToName());
+		System.out.println("El invite lo envio: " + inviteMessage.getFromName());
+		
 		//Comprobar si el usuario esta en la lista
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getToName())) {
+				// INFORMAR AL USUARIO DE QUE SE ESTA INTENTANDO CONECTAR CON EL USUSARIO A LA QUE QUIERE INVITAR
+				transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
 				
-				transactionLayer.echoOK(OKMessage(), originAddress, originPort);
+				// INVITAR AL USUARIO (ES IMPORTANTE SABER QUE PUERTO TIENE Y DIRECCION
+				// USAR EL OBJETO DE LA LISTA PARA OBTENER LO, PERO PRIMERO HAY QUE
+				// HACER EL SET DE ESTAS VARIABLES
+				transactionLayer.echoInvite(inviteMessage, originAddress, 9100);
 				return;
 			}
 		}
@@ -121,6 +126,26 @@ public class ProxyUserLayer {
 		notFoundMessage.setContact(originAddress + ":" + originPort);
 		
 		return notFoundMessage;
+	}
+	
+	// 100 trying message
+	private TryingMessage TryingMessage() throws IOException {
+		
+		String callId = UUID.randomUUID().toString();
+		
+		TryingMessage tryingMessage = new TryingMessage();	
+		
+		tryingMessage.setVias(new ArrayList<String>(Arrays.asList(originAddress + ":" + originPort)));
+		tryingMessage.setToName("Bob");
+		tryingMessage.setToUri("sip:bob@SMA");
+		tryingMessage.setFromName("Alice");
+		tryingMessage.setFromUri("sip:alice@SMA");
+		tryingMessage.setCallId(callId);
+		tryingMessage.setcSeqNumber("1");
+		tryingMessage.setcSeqStr("INVITE");
+		tryingMessage.setContentLength(0);
+
+		return tryingMessage;
 	}
 
 	public void startListening() {

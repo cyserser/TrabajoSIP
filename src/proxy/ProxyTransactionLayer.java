@@ -8,6 +8,7 @@ import mensajesSIP.RegisterMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.SIPMessage;
 import mensajesSIP.NotFoundMessage;
+import mensajesSIP.TryingMessage;
 
 public class ProxyTransactionLayer {
 	private static final int IDLE = 0;
@@ -65,6 +66,11 @@ public class ProxyTransactionLayer {
 	// mensaje 404 not found
 	public void echoNotfound(NotFoundMessage notFoundMessage, String address, int port) throws IOException {
 		transportLayer.send(notFoundMessage, address, port);
+	}
+	
+	// mensaje 100 trying
+	public void echoTrying(TryingMessage tryingMessage, String address, int port) throws IOException {
+		transportLayer.send(tryingMessage, address, port);
 	}
 
 	public void startListening() {

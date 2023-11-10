@@ -8,10 +8,12 @@ import mensajesSIP.RegisterMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SIPMessage;
+import mensajesSIP.TryingMessage;
 
 public class UaTransactionLayer {
 	private static final int IDLE = 0;
 	private static final int REGISTERING = 1;
+	private static final int TRYING = 2;
 	private int state;
 
 	private UaUserLayer userLayer;
@@ -26,8 +28,7 @@ public class UaTransactionLayer {
 	public void onMessageReceived(SIPMessage sipMessage) throws IOException {
 		if (sipMessage instanceof InviteMessage) {
 			InviteMessage inviteMessage = (InviteMessage) sipMessage;
-			String estado = inviteMessage.getcSeqStr();
-			
+			//String estado = inviteMessage.getcSeqStr();
 			switch (state) {
 			case IDLE:
 				userLayer.onInviteReceived(inviteMessage);
@@ -48,6 +49,13 @@ public class UaTransactionLayer {
 				break;
 			}
 		} 
+		
+		// 100 trying
+		else if (sipMessage instanceof TryingMessage) {
+			TryingMessage tryingMessage = (TryingMessage) sipMessage;
+			if(tryingMessage != null)
+			userLayer.onTryingReceived(tryingMessage);
+		}
 		
 		// 200 ok
 		else if(sipMessage instanceof OKMessage) {

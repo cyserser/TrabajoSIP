@@ -17,10 +17,12 @@ import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
+import mensajesSIP.TryingMessage;
 
 public class UaUserLayer {
 	private static final int IDLE = 0;
 	private static final int REGISTERING = 1;
+	private static final int TRYING = 2;
 	private int state;
 	private String Message = "";
 	private int counter=0;
@@ -48,13 +50,17 @@ public class UaUserLayer {
 	}
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
+		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		System.out.println("Received INVITE from " + inviteMessage.getFromName());
 		runVitextServer();
+		if(!inviteMessage.getFromName().toLowerCase().equals(userURIString)) {
+			
+		} 
 	}
 	
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
 		System.out.println("Received REGISTER from " + registerMessage.getFromName());
-		state = IDLE;
+		//state = IDLE;
 		runVitextServer();
 	}
 	public void onOKReceived(OKMessage okMessage) throws IOException {
@@ -68,6 +74,13 @@ public class UaUserLayer {
 		System.out.println(notFoundMessage.toStringMessage());
 		this.Message = "NOT FOUND";
 		//state = IDLE;
+		runVitextServer();
+	}
+	
+	public void onTryingReceived(TryingMessage tryingMessage) throws IOException {
+		System.out.println(tryingMessage.toStringMessage());
+		this.Message = "TRYING";
+		state = TRYING;
 		runVitextServer();
 	}
 
@@ -151,6 +164,9 @@ public class UaUserLayer {
 		case REGISTERING:
 			promptRegistering();
 			break;
+		case TRYING:
+			promptTrying();
+			break;
 		default:
 			throw new IllegalStateException("Unexpected state: " + state);
 		}
@@ -159,12 +175,18 @@ public class UaUserLayer {
 
 	private void promptIdle() {
 		state = IDLE;
+		System.out.println(this.userURI);
 		System.out.println("INVITE xxx");
 	}
 	
 	private void promptRegistering() {
 		state = REGISTERING;
 		System.out.println("REGISTER xxx");
+	}
+	
+	private void promptTrying(){
+		state = TRYING;
+		System.out.println("Trying...");
 	}
 
 	private void command(String line) throws IOException {
@@ -190,7 +212,7 @@ public class UaUserLayer {
 		return state;
 	}
 	
-	private void commandInvite(String line, int state ) throws IOException {
+	private void commandInvite(String line, int state) throws IOException {
 		stopVitextServer();
 		stopVitextClient();
 		
@@ -200,7 +222,7 @@ public class UaUserLayer {
 
 		String callId = UUID.randomUUID().toString();
 		String nameToSend = line.substring(line.indexOf(" ")).trim();
-		System.out.println(nameToSend);
+		System.out.println("Sending to:" + nameToSend);
 		
 		SDPMessage sdpMessage = new SDPMessage();
 		sdpMessage.setIp(this.myAddress);
@@ -264,8 +286,6 @@ public class UaUserLayer {
 		stopVitextServer();
 		stopVitextClient();
 		
-		System.out.println("Registering...");
-
 		runVitextClient();
 
 		String callId = UUID.randomUUID().toString();
