@@ -5,6 +5,7 @@ import java.net.SocketException;
 
 import mensajesSIP.InviteMessage;
 import mensajesSIP.RegisterMessage;
+import mensajesSIP.RingingMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SIPMessage;
@@ -70,6 +71,14 @@ public class UaTransactionLayer {
 			if(notFoundMessage != null)
 			userLayer.onNotFoundReceived(notFoundMessage);
 		}
+		
+		// 180 ringing
+		else if (sipMessage instanceof RingingMessage) {
+			RingingMessage ringingMessage = (RingingMessage) sipMessage;
+			if(ringingMessage != null)
+			userLayer.onRingingReceived(ringingMessage);
+		}
+		
 		else {
 			System.err.println("Unexpected message, throwing away (RESTO)");
 		}
@@ -82,7 +91,10 @@ public class UaTransactionLayer {
 	public void call(InviteMessage inviteMessage) throws IOException {
 		transportLayer.sendToProxy(inviteMessage);
 	}
-	public void callR(RegisterMessage registerMessage) throws IOException {
+	public void callRegister(RegisterMessage registerMessage) throws IOException {
 		transportLayer.sendToProxy(registerMessage);
+	}
+	public void callRinging(RingingMessage ringingMessage) throws IOException {
+		transportLayer.sendToProxy(ringingMessage);
 	}
 }

@@ -18,6 +18,7 @@ import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
 import mensajesSIP.TryingMessage;
+import mensajesSIP.RingingMessage;
 
 public class UaUserLayer {
 	private static final int IDLE = 0;
@@ -25,7 +26,6 @@ public class UaUserLayer {
 	private static final int TRYING = 2;
 	private int state;
 	private String Message = "";
-	private int counter=0;
 
 	public static final ArrayList<Integer> RTPFLOWS = new ArrayList<Integer>(
 			Arrays.asList(new Integer[] { 96, 97, 98 }));
@@ -50,12 +50,9 @@ public class UaUserLayer {
 	}
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
-		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		System.out.println("Received INVITE from " + inviteMessage.getFromName());
 		runVitextServer();
-		if(!inviteMessage.getFromName().toLowerCase().equals(userURIString)) {
-			
-		} 
+		commandRinging("");
 	}
 	
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
@@ -67,7 +64,10 @@ public class UaUserLayer {
 		System.out.println(okMessage.toStringMessage());
 		this.Message = "OK";
 		state = IDLE;
-		prompt();
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(okMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
+		}
 		runVitextServer();
 	}
 	public void onNotFoundReceived(NotFoundMessage notFoundMessage) throws IOException {
@@ -82,6 +82,13 @@ public class UaUserLayer {
 		this.Message = "TRYING";
 		state = TRYING;
 		runVitextServer();
+	}
+	
+	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
+		System.out.println(ringingMessage.toStringMessage());
+		this.Message = "RINGING";
+		runVitextServer();
+		ringingTimer();
 	}
 
 	public void startListeningNetwork() {
@@ -120,9 +127,9 @@ public class UaUserLayer {
 
 	private void ourTimer() {
 		Timer timer = new Timer();
-		
 		int time = 2;
 		TimerTask task = new TimerTask() {
+			int counter=0;
 		    @Override
 		    public void run() {
 		        // Coloca la acción que deseas ejecutar aquí
@@ -139,6 +146,38 @@ public class UaUserLayer {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+		        if(counter>10) {
+		        	try {
+		        		System.out.println(commandTimeout("").toStringMessage());
+		        		timer.cancel();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+		        }
+		    }
+		};
+
+		// Programar el Timer para que se ejecute cada 2 segundos
+		timer.scheduleAtFixedRate(task, 0, time*1000);
+	}
+	
+	private void ringingTimer() {
+		Timer timer = new Timer();
+		
+		int time = 2;
+		TimerTask task = new TimerTask() {
+			int counter=0;
+		    @Override
+		    public void run() {
+		        // Coloca la acción que deseas ejecutar aquí
+		        if (Message.equals("OK")) {
+		       		timer.cancel();
+		       	}
+		       	else {
+		       		System.out.println("Ringing... "+counter);
+		       		counter=counter+time;
+		       	}
 		        if(counter>10) {
 		        	try {
 		        		System.out.println(commandTimeout("").toStringMessage());
@@ -278,7 +317,7 @@ public class UaUserLayer {
 		registerMessage.setContentLength(registerMessage.toStringMessage().getBytes().length);
 
 		
-		transactionLayer.callR(registerMessage);
+		transactionLayer.callRegister(registerMessage);
 	
 	}
 	
@@ -304,6 +343,31 @@ public class UaUserLayer {
 		timeout.setContentLength(timeout.toStringMessage().getBytes().length);
 		
 		return timeout;
+	}
+	
+	private void commandRinging(String line) throws IOException {
+		stopVitextServer();
+		stopVitextClient();
+		
+		runVitextClient();
+
+		String callId = UUID.randomUUID().toString();
+		String userURIString = userURI.substring(0, userURI.indexOf("@"));
+		
+		RingingMessage ringingMessage = new RingingMessage();
+	
+		ringingMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
+		ringingMessage.setToName("Bob");
+		ringingMessage.setToUri("sip:bob@SMA");
+		ringingMessage.setFromName(userURIString);
+		ringingMessage.setFromUri("sip:"+userURI);
+		ringingMessage.setCallId(callId);
+		ringingMessage.setcSeqNumber("1");
+		ringingMessage.setcSeqStr("REGISTER");
+		ringingMessage.setContentLength(ringingMessage.toStringMessage().getBytes().length);
+		
+		transactionLayer.callRinging(ringingMessage);
+		
 	}
 		
 

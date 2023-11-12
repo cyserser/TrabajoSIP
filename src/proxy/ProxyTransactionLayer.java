@@ -5,6 +5,7 @@ import java.net.SocketException;
 
 import mensajesSIP.InviteMessage;
 import mensajesSIP.RegisterMessage;
+import mensajesSIP.RingingMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.SIPMessage;
 import mensajesSIP.NotFoundMessage;
@@ -46,7 +47,12 @@ public class ProxyTransactionLayer {
 				System.err.println("Unexpected message, throwing away (REGISTER)");
 				break;
 			}
-		} else {
+		} 
+		else if (sipMessage instanceof RingingMessage) {
+			RingingMessage ringingMessage = (RingingMessage) sipMessage;
+			userLayer.onRingingReceived(ringingMessage);
+		}
+		else {
 			System.err.println("Unexpected message, throwing away (REST)");
 		}
 	}
@@ -73,6 +79,11 @@ public class ProxyTransactionLayer {
 		transportLayer.send(tryingMessage, address, port);
 	}
 
+	// mensaje 180 ringing
+		public void echoRinging(RingingMessage ringingMessage, String address, int port) throws IOException {
+			transportLayer.send(ringingMessage, address, port);
+		}
+		
 	public void startListening() {
 		transportLayer.startListening();
 	}

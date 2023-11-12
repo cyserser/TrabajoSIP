@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import mensajesSIP.InviteMessage;
 import mensajesSIP.RegisterMessage;
+import mensajesSIP.RingingMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
@@ -75,6 +76,31 @@ public class ProxyUserLayer {
 			if(getFromWhiteList(i).equals(registerMessage.getFromName())) {
 				
 				transactionLayer.echoOK(OKMessage(), originAddress, originPort);
+				return;
+			}
+		}
+		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+		System.out.println("UNKNOWN USER");
+	}
+	
+	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
+		System.out.println("Received Ringing from " + ringingMessage.getFromName());
+		//System.out.println(registerMessage.getFromName());
+		//System.out.println("hgh "+ whiteList.getWhiteList().get(0).getUserURI());
+		
+		ArrayList<String> vias = ringingMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		originAddress = originParts[0];
+		originPort = Integer.parseInt(originParts[1]);
+		
+		int whiteListSize = whiteList.getWhiteList().size();
+		
+		//Comprobar si el usuario esta en la lista
+		for(int i = 0; i < whiteListSize; i++)
+		{
+			if(getFromWhiteList(i).equals(ringingMessage.getToName().toLowerCase())) {
+				transactionLayer.echoRinging(ringingMessage, originAddress, 9000);
 				return;
 			}
 		}

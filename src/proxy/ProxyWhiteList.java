@@ -3,16 +3,14 @@ package proxy;
 public class ProxyWhiteList {
 	
 	private String userURI;
-	private int listenPort;
-	private String proxyAddress;
-	private int proxyPort;
+	private int userPort;
+	private String userAddress;
 
-	public ProxyWhiteList(String userURI, String proxyAddress, int listenPort, int proxyPort) {
+	public ProxyWhiteList(String userURI, String userAddress, int userPort) {
 		super();
 		this.userURI = userURI;
-		this.proxyAddress = proxyAddress;
-		this.listenPort = listenPort;
-		this.proxyPort = proxyPort;
+		this.userAddress = userAddress;
+		this.userPort = userPort;
 	}
 	
 	public ProxyWhiteList(String userURI) {
@@ -26,26 +24,19 @@ public class ProxyWhiteList {
 	public void setName(String userURI) {
 		this.userURI = userURI;
 	}
-	public String getProxyAddress() {
-		return proxyAddress;
+	public String getUserAddress() {
+		return userAddress;
 	}
-	public void setProxyAddress(String address) {
-		this.proxyAddress = address;
-	}
-
-	public int getListenPort() {
-		return listenPort;
+	public void setUserAddress(String address) {
+		this.userAddress = address;
 	}
 
-	public void setListenPort(int listenPort) {
-		this.listenPort = listenPort;
+	public int getUserPort() {
+		return userPort;
 	}
 
-	public int getProxyPort() {
-		return proxyPort;
+	public void setUserPort(int listenPort) {
+		this.userPort = listenPort;
 	}
 
-	public void setProxyPort(int proxyPort) {
-		this.proxyPort = proxyPort;
-	}
 }
