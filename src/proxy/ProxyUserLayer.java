@@ -13,6 +13,8 @@ import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
 import mensajesSIP.TryingMessage;
+import mensajesSIP.RequestTimeoutMessage;
+import mensajesSIP.BusyHereMessage;
 
 public class ProxyUserLayer {
 	private ProxyTransactionLayer transactionLayer;
@@ -107,12 +109,68 @@ public class ProxyUserLayer {
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
 		System.out.println("UNKNOWN USER");
 	}
+	
+	// on OK received
+	public void onOKReceived(OKMessage okMessage) throws IOException {
+		System.out.println("Received Ringing from " + okMessage.getFromName());
+
+		
+		ArrayList<String> vias = okMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		originAddress = originParts[0];
+		originPort = Integer.parseInt(originParts[1]);
+		
+		int whiteListSize = whiteList.getWhiteList().size();
+		
+		//Comprobar si el usuario esta en la lista
+		for(int i = 0; i < whiteListSize; i++)
+		{
+			if(getFromWhiteList(i).equals(okMessage.getToName().toLowerCase())) {
+				transactionLayer.echoOK(okMessage, originAddress, 9000);
+				return;
+			}
+		}
+		
+		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+		System.out.println("UNKNOWN USER");
+	}
+	
+	// on OK received
+	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
+		System.out.println("Received busyHereMessage from " + busyHereMessage.getFromName());
+
+		
+		ArrayList<String> vias = busyHereMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		originAddress = originParts[0];
+		originPort = Integer.parseInt(originParts[1]);
+		
+		int whiteListSize = whiteList.getWhiteList().size();
+		
+		//Comprobar si el usuario esta en la lista
+		for(int i = 0; i < whiteListSize; i++)
+		{
+			if(getFromWhiteList(i).equals(busyHereMessage.getToName().toLowerCase())) {
+				transactionLayer.echoBusyHere(busyHereMessage, originAddress, 9000);
+				return;
+			}
+		}
+		
+		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+		System.out.println("UNKNOWN USER");
+	}
 
 	private String getFromWhiteList(int i) {
 		String whiteListUser;
 		whiteListUser = whiteList.getWhiteList().get(i).getUserURI().substring(0, whiteList.getWhiteList().get(i).getUserURI().indexOf("@"));
 		return whiteListUser;
 	}
+	
+	
+	//** MENSAJES PARA ENVIAR **//
+	
 	
 	// 200 OK message
 	private OKMessage OKMessage() throws IOException {

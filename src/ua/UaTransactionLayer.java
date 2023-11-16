@@ -10,6 +10,8 @@ import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SIPMessage;
 import mensajesSIP.TryingMessage;
+import mensajesSIP.RequestTimeoutMessage;
+import mensajesSIP.BusyHereMessage;
 
 public class UaTransactionLayer {
 	private static final int IDLE = 0;
@@ -79,6 +81,13 @@ public class UaTransactionLayer {
 			userLayer.onRingingReceived(ringingMessage);
 		}
 		
+		// 486 busy
+		else if (sipMessage instanceof BusyHereMessage) {
+			BusyHereMessage busyMessage = (BusyHereMessage) sipMessage;
+			if(busyMessage != null)
+			userLayer.onBusyHereReceived(busyMessage);
+		}
+		
 		else {
 			System.err.println("Unexpected message, throwing away (RESTO)");
 		}
@@ -96,5 +105,15 @@ public class UaTransactionLayer {
 	}
 	public void callRinging(RingingMessage ringingMessage) throws IOException {
 		transportLayer.sendToProxy(ringingMessage);
+	}
+	
+	// OK que enviamos
+	public void callOK(OKMessage okMessage) throws IOException {
+		transportLayer.sendToProxy(okMessage);
+	}
+	
+	// 486 Busy here
+	public void callBusyHere(BusyHereMessage busyHereMessage) throws IOException {
+		transportLayer.sendToProxy(busyHereMessage);
 	}
 }

@@ -10,6 +10,7 @@ import mensajesSIP.OKMessage;
 import mensajesSIP.SIPMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.TryingMessage;
+import mensajesSIP.BusyHereMessage;
 
 public class ProxyTransactionLayer {
 	private static final int IDLE = 0;
@@ -52,6 +53,14 @@ public class ProxyTransactionLayer {
 			RingingMessage ringingMessage = (RingingMessage) sipMessage;
 			userLayer.onRingingReceived(ringingMessage);
 		}
+		else if (sipMessage instanceof OKMessage) {
+			OKMessage okMessage = (OKMessage) sipMessage;
+			userLayer.onOKReceived(okMessage);
+		}
+		else if (sipMessage instanceof BusyHereMessage) {
+			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
+			userLayer.onBusyHereReceived(busyHereMessage);;
+		}
 		else {
 			System.err.println("Unexpected message, throwing away (REST)");
 		}
@@ -80,9 +89,15 @@ public class ProxyTransactionLayer {
 	}
 
 	// mensaje 180 ringing
-		public void echoRinging(RingingMessage ringingMessage, String address, int port) throws IOException {
-			transportLayer.send(ringingMessage, address, port);
-		}
+	public void echoRinging(RingingMessage ringingMessage, String address, int port) throws IOException {
+		transportLayer.send(ringingMessage, address, port);
+	}
+	
+	// mensaje 486 busy here
+	public void echoBusyHere(BusyHereMessage busyHereMessage, String address, int port) throws IOException {
+		transportLayer.send(busyHereMessage, address, port);
+	}
+			
 		
 	public void startListening() {
 		transportLayer.startListening();

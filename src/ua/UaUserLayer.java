@@ -19,11 +19,13 @@ import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.RingingMessage;
+import mensajesSIP.BusyHereMessage;
 
 public class UaUserLayer {
 	private static final int IDLE = 0;
 	private static final int REGISTERING = 1;
 	private static final int TRYING = 2;
+	private static final int WAITING = 3;
 	private int state;
 	private String Message = "";
 
@@ -51,7 +53,9 @@ public class UaUserLayer {
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
 		System.out.println("Received INVITE from " + inviteMessage.getFromName());
+		state = WAITING;
 		runVitextServer();
+		prompt();
 		commandRinging("");
 	}
 	
@@ -89,6 +93,12 @@ public class UaUserLayer {
 		this.Message = "RINGING";
 		runVitextServer();
 		ringingTimer();
+	}
+	
+	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
+		System.out.println(busyHereMessage.toStringMessage());
+		this.Message = "BUSY";
+		runVitextServer();
 	}
 
 	public void startListeningNetwork() {
@@ -164,18 +174,18 @@ public class UaUserLayer {
 	
 	private void ringingTimer() {
 		Timer timer = new Timer();
-		
+		System.out.println("Ringing... ");
 		int time = 2;
 		TimerTask task = new TimerTask() {
 			int counter=0;
 		    @Override
 		    public void run() {
 		        // Coloca la acción que deseas ejecutar aquí
-		        if (Message.equals("OK")) {
+		        if (Message.equals("OK") || Message.equals("BUSY")) {
 		       		timer.cancel();
 		       	}
 		       	else {
-		       		System.out.println("Ringing... "+counter);
+		       		
 		       		counter=counter+time;
 		       	}
 		        if(counter>10) {
@@ -206,6 +216,9 @@ public class UaUserLayer {
 		case TRYING:
 			promptTrying();
 			break;
+		case WAITING:
+			checkWaiting();
+			break;
 		default:
 			throw new IllegalStateException("Unexpected state: " + state);
 		}
@@ -227,6 +240,12 @@ public class UaUserLayer {
 		state = TRYING;
 		System.out.println("Trying...");
 	}
+	
+	private void checkWaiting(){
+		state = WAITING;
+		System.out.println("Introduce an s to accept the call or deny with a n...");
+		state = IDLE;
+	}
 
 	private void command(String line) throws IOException {
 		if (line.startsWith("INVITE")) {
@@ -236,6 +255,21 @@ public class UaUserLayer {
 			commandRegister(line, state);
 			
 		} 
+		else if(line.startsWith("s"))
+		{
+			if(line.length()==1)
+			{
+				commandOK("");
+			}
+		}
+		
+		else if(line.startsWith("n"))
+		{
+			if(line.length()==1)
+			{
+				commandBusy("");
+			}
+		}
 		else {
 			System.out.println("Bad command");
 		}
@@ -256,7 +290,7 @@ public class UaUserLayer {
 		stopVitextClient();
 		
 		System.out.println("Inviting...");
-
+		
 		runVitextClient();
 
 		String callId = UUID.randomUUID().toString();
@@ -369,7 +403,47 @@ public class UaUserLayer {
 		transactionLayer.callRinging(ringingMessage);
 		
 	}
+	
+	// 200 OK message
+	private void commandOK(String line) throws IOException {
 		
+		String callId = UUID.randomUUID().toString();
+		
+		OKMessage okMessage = new OKMessage();	
+		
+		okMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
+		okMessage.setToName("Bob");
+		okMessage.setToUri("sip:bob@SMA");
+		okMessage.setFromName("Alice");
+		okMessage.setFromUri("sip:alice@SMA");
+		okMessage.setCallId(callId);
+		okMessage.setcSeqNumber("1");
+		okMessage.setcSeqStr("INVITE");
+		okMessage.setContact(this.myAddress + ":" + this.listenPort);
+		
+		transactionLayer.callOK(okMessage);
+	}
+	
+	// 486 BUSY
+	private void commandBusy(String line) throws IOException {
+		
+		String callId = UUID.randomUUID().toString();
+		
+		BusyHereMessage busyHereMessage = new BusyHereMessage();	
+		
+		busyHereMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
+		busyHereMessage.setToName("Bob");
+		busyHereMessage.setToUri("sip:bob@SMA");
+		busyHereMessage.setFromName("Alice");
+		busyHereMessage.setFromUri("sip:alice@SMA");
+		busyHereMessage.setCallId(callId);
+		busyHereMessage.setcSeqNumber("1");
+		busyHereMessage.setcSeqStr("INVITE");
+		
+		
+		transactionLayer.callBusyHere(busyHereMessage);
+	}
+	
 
 	private void runVitextClient() throws IOException {
 		//vitextClient = Runtime.getRuntime().exec("xterm -e vitext/vitextclient -p 5000 239.1.2.3");
