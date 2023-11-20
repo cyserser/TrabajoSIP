@@ -22,12 +22,24 @@ import mensajesSIP.RingingMessage;
 import mensajesSIP.BusyHereMessage;
 
 public class UaUserLayer {
-	private static final int IDLE = 0;
+	
 	private static final int REGISTERING = 1;
 	private static final int TRYING = 2;
 	private static final int WAITING = 3;
-	private int state;
 	private String Message = "";
+	//Estados llamante
+	private static final int IDLE = 0;
+	private static final int CALLING = 1;
+	private static final int PROCEEDING_A = 2;
+	private static final int COMPLETED_A = 3;
+	private static final int TERMINATED_A = 4;
+	
+	//Estados llamado
+	private static final int PROCEEDING_B = 5;
+	private static final int COMPLETED_B = 6;
+	private static final int TERMINATED_B = 7;
+	
+	private int state;
 
 	public static final ArrayList<Integer> RTPFLOWS = new ArrayList<Integer>(
 			Arrays.asList(new Integer[] { 96, 97, 98 }));
@@ -53,44 +65,67 @@ public class UaUserLayer {
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
 		System.out.println("Received INVITE from " + inviteMessage.getFromName());
-		state = WAITING;
+		state = PROCEEDING_B;
 		runVitextServer();
-		prompt();
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(inviteMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
+		}
 		commandRinging("");
 	}
 	
-	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
-		System.out.println("Received REGISTER from " + registerMessage.getFromName());
-		//state = IDLE;
-		runVitextServer();
-	}
+
 	public void onOKReceived(OKMessage okMessage) throws IOException {
-		System.out.println(okMessage.toStringMessage());
 		this.Message = "OK";
-		state = IDLE;
+		
+		if(state == CALLING || state == PROCEEDING_A) {
+			state = TERMINATED_A;
+		}
+		System.out.println(okMessage.toStringMessage());
+		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(okMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			prompt();
 		}
+		
 		runVitextServer();
+		
 	}
+	
+	// 404 NOT FOUND (usuario que no existe cuando lo introducimos por teclado)
 	public void onNotFoundReceived(NotFoundMessage notFoundMessage) throws IOException {
 		System.out.println(notFoundMessage.toStringMessage());
 		this.Message = "NOT FOUND";
-		//state = IDLE;
+		state = COMPLETED_A;
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(notFoundMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
+		}
 		runVitextServer();
 	}
 	
+	// 100 TRYING
 	public void onTryingReceived(TryingMessage tryingMessage) throws IOException {
 		System.out.println(tryingMessage.toStringMessage());
 		this.Message = "TRYING";
-		state = TRYING;
+		state = PROCEEDING_A;
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(tryingMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
+		}
 		runVitextServer();
 	}
 	
+	// 180 RINING
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
 		System.out.println(ringingMessage.toStringMessage());
 		this.Message = "RINGING";
+		state = PROCEEDING_A;
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(ringingMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
+		}
 		runVitextServer();
 		ringingTimer();
 	}
@@ -98,6 +133,13 @@ public class UaUserLayer {
 	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
 		System.out.println(busyHereMessage.toStringMessage());
 		this.Message = "BUSY";
+		state = COMPLETED_A;
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(busyHereMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
+		}
+		
 		runVitextServer();
 	}
 
@@ -123,7 +165,6 @@ public class UaUserLayer {
 	}
 	//REGISTRO AUTOMÁTICO AL INICIAR SIN CREDENCIALES
 	public void autoRegistering() {
-		state = REGISTERING;
 		try {
 			commandRegister("", state);
 			
@@ -210,14 +251,26 @@ public class UaUserLayer {
 		case IDLE:
 			promptIdle();
 			break;
-		case REGISTERING:
-			promptRegistering();
+		case PROCEEDING_A:
+			promptProceedingA();
 			break;
-		case TRYING:
-			promptTrying();
+		case PROCEEDING_B:
+			promptProceedingB();
 			break;
-		case WAITING:
-			checkWaiting();
+		case CALLING:
+			promptCalling();
+			break;
+		case COMPLETED_A:
+			promptCompletedA();
+			break;
+		case COMPLETED_B:
+			promptCompletedB();
+			break;
+		case TERMINATED_A:
+			promptTerminatedA();
+			break;
+		case TERMINATED_B:
+			promptTerminatedB();
 			break;
 		default:
 			throw new IllegalStateException("Unexpected state: " + state);
@@ -226,26 +279,43 @@ public class UaUserLayer {
 	}
 
 	private void promptIdle() {
-		state = IDLE;
 		System.out.println(this.userURI);
 		System.out.println("INVITE xxx");
 	}
 	
-	private void promptRegistering() {
-		state = REGISTERING;
-		System.out.println("REGISTER xxx");
+	private void promptProceedingA() {
+		System.out.println(this.userURI);
+		System.out.println("Proceeding...");
 	}
 	
-	private void promptTrying(){
-		state = TRYING;
-		System.out.println("Trying...");
-	}
-	
-	private void checkWaiting(){
-		state = WAITING;
+	private void promptProceedingB() {
+		System.out.println(this.userURI);
 		System.out.println("Introduce an s to accept the call or deny with a n...");
-		state = IDLE;
 	}
+	private void promptCalling() {
+		System.out.println(this.userURI);
+		System.out.println("Calling...");
+	}
+	private void promptCompletedA() {
+		System.out.println(this.userURI);
+		System.out.println("Llamada fallida A...");
+	}
+	
+	private void promptCompletedB() {
+		System.out.println(this.userURI);
+		System.out.println("Llamada fallida B...");
+	}
+	
+	private void promptTerminatedA() {
+		System.out.println(this.userURI);
+		System.out.println("Conexión establecida A");
+	}
+	
+	private void promptTerminatedB() {
+		System.out.println(this.userURI);
+		System.out.println("Conexión establecida B");
+	}
+	
 
 	private void command(String line) throws IOException {
 		if (line.startsWith("INVITE")) {
@@ -275,19 +345,12 @@ public class UaUserLayer {
 		}
 	}
 
-	public int checkState() {
-		if(state == IDLE) {
-			
-		}
-		else if(state == REGISTERING) {
-			
-		}
-		return state;
-	}
-	
 	private void commandInvite(String line, int state) throws IOException {
 		stopVitextServer();
 		stopVitextClient();
+		
+		
+		state = CALLING;
 		
 		System.out.println("Inviting...");
 		
@@ -317,7 +380,13 @@ public class UaUserLayer {
 		inviteMessage.setContentType("application/sdp");
 		inviteMessage.setContentLength(sdpMessage.toStringMessage().getBytes().length);
 		inviteMessage.setSdp(sdpMessage);
-
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(inviteMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			System.out.print(inviteMessage.toStringMessage());
+			prompt();
+		}
+		
 		transactionLayer.call(inviteMessage);
 	}
 	
@@ -325,7 +394,7 @@ public class UaUserLayer {
 		stopVitextServer();
 		stopVitextClient();
 		
-		System.out.println("Registering...");
+		
 
 		runVitextClient();
 
@@ -334,7 +403,6 @@ public class UaUserLayer {
 		
 		RegisterMessage registerMessage = new RegisterMessage();
 	
-		
 		registerMessage.setDestination("sip:bob@SMA");
 		registerMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
 		registerMessage.setMaxForwards(70);
@@ -349,7 +417,12 @@ public class UaUserLayer {
 		registerMessage.setAuthorization("Authorization");
 		registerMessage.setExpires("2");
 		registerMessage.setContentLength(registerMessage.toStringMessage().getBytes().length);
-
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(registerMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			System.out.println(registerMessage.toStringMessage());
+			prompt();
+		}
 		
 		transactionLayer.callRegister(registerMessage);
 	
@@ -376,6 +449,13 @@ public class UaUserLayer {
 		timeout.setcSeqStr("REGISTER");
 		timeout.setContentLength(timeout.toStringMessage().getBytes().length);
 		
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(timeout.getFromName().equalsIgnoreCase(userURIstring)) {
+			System.out.print(timeout.toStringMessage());
+			prompt();
+		}
+		
 		return timeout;
 	}
 	
@@ -400,14 +480,22 @@ public class UaUserLayer {
 		ringingMessage.setcSeqStr("REGISTER");
 		ringingMessage.setContentLength(ringingMessage.toStringMessage().getBytes().length);
 		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(ringingMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			System.out.print(ringingMessage.toStringMessage());
+			prompt();
+		}
+		
 		transactionLayer.callRinging(ringingMessage);
 		
 	}
 	
-	// 200 OK message
+	// 200 OK message (lo envia el llamado)
 	private void commandOK(String line) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
+		
+		state = TERMINATED_B;
 		
 		OKMessage okMessage = new OKMessage();	
 		
@@ -420,6 +508,12 @@ public class UaUserLayer {
 		okMessage.setcSeqNumber("1");
 		okMessage.setcSeqStr("INVITE");
 		okMessage.setContact(this.myAddress + ":" + this.listenPort);
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(okMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			System.out.print(okMessage.toStringMessage());
+			prompt();
+		}
 		
 		transactionLayer.callOK(okMessage);
 	}
@@ -440,6 +534,11 @@ public class UaUserLayer {
 		busyHereMessage.setcSeqNumber("1");
 		busyHereMessage.setcSeqStr("INVITE");
 		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(busyHereMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			System.out.print(busyHereMessage.toStringMessage());
+			prompt();
+		}
 		
 		transactionLayer.callBusyHere(busyHereMessage);
 	}
