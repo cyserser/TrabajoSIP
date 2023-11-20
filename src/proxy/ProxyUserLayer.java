@@ -15,7 +15,6 @@ import mensajesSIP.SDPMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.BusyHereMessage;
-import mensajesSIP.ServiceUnavailableMessage;
 
 public class ProxyUserLayer {
 	private ProxyTransactionLayer transactionLayer;
@@ -232,26 +231,6 @@ public class ProxyUserLayer {
 
 		return tryingMessage;
 	}
-	
-	// 503 Service Unavailable
-		private ServiceUnavailableMessage ServiceUnavailableMessage() throws IOException {
-			
-			String callId = UUID.randomUUID().toString();
-			
-			ServiceUnavailableMessage serviceUnavailableMessage = new ServiceUnavailableMessage();	
-			
-			serviceUnavailableMessage.setVias(new ArrayList<String>(Arrays.asList(originAddress + ":" + originPort)));
-			serviceUnavailableMessage.setToName("Bob");
-			serviceUnavailableMessage.setToUri("sip:bob@SMA");
-			serviceUnavailableMessage.setFromName("Alice");
-			serviceUnavailableMessage.setFromUri("sip:alice@SMA");
-			serviceUnavailableMessage.setCallId(callId);
-			serviceUnavailableMessage.setcSeqNumber("1");
-			serviceUnavailableMessage.setcSeqStr("INVITE");
-			serviceUnavailableMessage.setContentLength(0);
-
-			return serviceUnavailableMessage;
-		}
 
 	public void startListening() {
 		transactionLayer.startListening();
