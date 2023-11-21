@@ -46,7 +46,7 @@ public class ProxyUserLayer {
 
 	// RECIBO MENSAJE INVITE DEL LLAMANTE
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
-		System.out.println("Received INVITE from " + inviteMessage.getFromName());
+		System.out.println(inviteMessage.toStringMessage());
 		int whiteListSize = whiteList.getWhiteList().size();
 		
 		//Comprobar si el llamante esta en la lista
@@ -54,6 +54,7 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getFromName())) {
 				stateA = CALLING;
+				System.out.println(inviteMessage.toStringMessage());
 			} 
 			else
 			{
@@ -78,24 +79,26 @@ public class ProxyUserLayer {
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getToName())) {
-				// INFORMAR AL USUARIO DE QUE SE ESTA INTENTANDO CONECTAR CON EL USUSARIO A LA QUE QUIERE INVITAR
-
-				transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
-					
 				
 				// INVITAR AL USUARIO (ES IMPORTANTE SABER QUE PUERTO TIENE Y DIRECCION
 				// USAR EL OBJETO DE LA LISTA PARA OBTENER LO, PERO PRIMERO HAY QUE
 				// HACER EL SET DE ESTAS VARIABLES
 				transactionLayer.echoInvite(inviteMessage, originAddress, 9100);
+				System.out.println(inviteMessage.toStringMessage());
+				
+				// INFORMAR AL USUARIO DE QUE SE ESTA INTENTANDO CONECTAR CON EL USUSARIO A LA QUE QUIERE INVITAR
+				transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
+				System.out.println(TryingMessage());
+				
 				return;
 			}
 		}
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println("UNKNOWN USER");
+		System.out.println(NotFoundMessage());
 	}
 	
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
-		System.out.println("Received REGISTER from " + registerMessage.getFromName());
+		System.out.println(registerMessage.toStringMessage());
 		//System.out.println(registerMessage.getFromName());
 		//System.out.println("hgh "+ whiteList.getWhiteList().get(0).getUserURI());
 		
@@ -113,15 +116,16 @@ public class ProxyUserLayer {
 			if(getFromWhiteList(i).equals(registerMessage.getFromName())) {
 				
 				transactionLayer.echoOK(OKMessage(), originAddress, originPort);
+				System.out.println(OKMessage());
 				return;
 			}
 		}
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println("UNKNOWN USER");
+		System.out.println(NotFoundMessage());
 	}
 	
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
-		System.out.println("Received Ringing from " + ringingMessage.getFromName());
+		System.out.println(ringingMessage.toStringMessage());
 		//System.out.println(registerMessage.getFromName());
 		//System.out.println("hgh "+ whiteList.getWhiteList().get(0).getUserURI());
 		
@@ -141,16 +145,17 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equals(ringingMessage.getToName().toLowerCase())) {
 				transactionLayer.echoRinging(ringingMessage, originAddress, 9000);
+				System.out.println(ringingMessage);
 				return;
 			}
 		}
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println("UNKNOWN USER");
+		System.out.println(NotFoundMessage());
 	}
 	
 	// on OK received
 	public void onOKReceived(OKMessage okMessage) throws IOException {
-		System.out.println("Received Ringing from " + okMessage.getFromName());
+		System.out.println(okMessage.toStringMessage());
 
 		stateB = TERMINATED_B;
 		
@@ -167,17 +172,18 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equals(okMessage.getToName().toLowerCase())) {
 				transactionLayer.echoOK(okMessage, originAddress, 9000);
+				System.out.println(okMessage);
 				return;
 			}
 		}
 		
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println("UNKNOWN USER");
+		System.out.println(NotFoundMessage());
 	}
 	
 	// on BUSY HERE RECEIVED del llamado
 	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
-		System.out.println("Received busyHereMessage from " + busyHereMessage.getFromName());
+		System.out.println(busyHereMessage.toStringMessage());
 
 		stateB = COMPLETED_B;
 				
@@ -194,12 +200,13 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equals(busyHereMessage.getToName().toLowerCase())) {
 				transactionLayer.echoBusyHere(busyHereMessage, originAddress, 9000);
+				System.out.println(busyHereMessage);
 				return;
 			}
 		}
 		
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println("UNKNOWN USER");
+		System.out.println(NotFoundMessage());
 	}
 
 	private String getFromWhiteList(int i) {
@@ -232,7 +239,7 @@ public class ProxyUserLayer {
 		int whiteListSize = whiteList.getWhiteList().size();
 		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(getFromWhiteList(i).equals(okMessage.getToName().toLowerCase())) {
+			if(getFromWhiteList(i).equals(okMessage.getFromName().toLowerCase())) {
 				System.out.print(okMessage.toStringMessage());
 				
 			}
@@ -261,7 +268,7 @@ public class ProxyUserLayer {
 		int whiteListSize = whiteList.getWhiteList().size();
 		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(getFromWhiteList(i).equals(notFoundMessage.getToName().toLowerCase())) {
+			if(getFromWhiteList(i).equals(notFoundMessage.getFromName().toLowerCase())) {
 				System.out.print(notFoundMessage.toStringMessage());
 				
 			}
@@ -290,7 +297,7 @@ public class ProxyUserLayer {
 		int whiteListSize = whiteList.getWhiteList().size();
 		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(getFromWhiteList(i).equals(tryingMessage.getToName().toLowerCase())) {
+			if(getFromWhiteList(i).equals(tryingMessage.getFromName().toLowerCase())) {
 				System.out.print(tryingMessage.toStringMessage());
 				
 			}
@@ -319,7 +326,7 @@ public class ProxyUserLayer {
 		int whiteListSize = whiteList.getWhiteList().size();
 		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(getFromWhiteList(i).equals(serviceUnavailableMessage.getToName().toLowerCase())) {
+			if(getFromWhiteList(i).equals(serviceUnavailableMessage.getFromName().toLowerCase())) {
 				System.out.print(serviceUnavailableMessage.toStringMessage());	
 			}
 		}

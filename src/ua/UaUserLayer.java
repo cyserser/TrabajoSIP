@@ -68,7 +68,7 @@ public class UaUserLayer {
 		state = PROCEEDING_B;
 		runVitextServer();
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(inviteMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+		if(inviteMessage.getToName().equalsIgnoreCase(userURIstring)) {
 			prompt();
 		}
 		commandRinging("");
@@ -451,7 +451,7 @@ public class UaUserLayer {
 		
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(timeout.getFromName().equalsIgnoreCase(userURIstring)) {
+		if(timeout.getToName().equalsIgnoreCase(userURIstring)) {
 			System.out.print(timeout.toStringMessage());
 			prompt();
 		}
@@ -481,7 +481,7 @@ public class UaUserLayer {
 		ringingMessage.setContentLength(ringingMessage.toStringMessage().getBytes().length);
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(ringingMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+		if(ringingMessage.getToName().equalsIgnoreCase(userURIstring)) {
 			System.out.print(ringingMessage.toStringMessage());
 			prompt();
 		}
@@ -510,7 +510,7 @@ public class UaUserLayer {
 		okMessage.setContact(this.myAddress + ":" + this.listenPort);
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(okMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+		if(okMessage.getToName().equalsIgnoreCase(userURIstring)) {
 			System.out.print(okMessage.toStringMessage());
 			prompt();
 		}
@@ -535,7 +535,7 @@ public class UaUserLayer {
 		busyHereMessage.setcSeqStr("INVITE");
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(busyHereMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+		if(busyHereMessage.getToName().equalsIgnoreCase(userURIstring)) {
 			System.out.print(busyHereMessage.toStringMessage());
 			prompt();
 		}
