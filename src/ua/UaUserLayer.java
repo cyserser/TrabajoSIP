@@ -39,7 +39,7 @@ public class UaUserLayer {
 	private static final int COMPLETED_B = 6;
 	private static final int TERMINATED_B = 7;
 	
-	private int state;
+	private int state = IDLE;
 
 	public static final ArrayList<Integer> RTPFLOWS = new ArrayList<Integer>(
 			Arrays.asList(new Integer[] { 96, 97, 98 }));
@@ -60,7 +60,6 @@ public class UaUserLayer {
 		this.listenPort = listenPort;
 		this.rtpPort = listenPort + 1;
 		this.userURI = userURI;
-		System.out.println("hola"+ userURI);
 	}
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
@@ -74,7 +73,7 @@ public class UaUserLayer {
 		commandRinging("");
 	}
 	
-
+	// OK MESSAGE RECEIVED
 	public void onOKReceived(OKMessage okMessage) throws IOException {
 		this.Message = "OK";
 		
@@ -85,7 +84,9 @@ public class UaUserLayer {
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(okMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			
 			prompt();
+			
 		}
 		
 		runVitextServer();
@@ -152,7 +153,7 @@ public class UaUserLayer {
 		try (Scanner scanner = new Scanner(System.in)) {
 			while (true) {
 				
-				prompt();
+				//prompt();
 				String line = scanner.nextLine();
 				if (!line.isEmpty()) {
 					command(line);
@@ -168,7 +169,7 @@ public class UaUserLayer {
 		try {
 			commandRegister("", state);
 			
-			ourTimer();
+			//ourTimer();
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -246,7 +247,6 @@ public class UaUserLayer {
 	}
 
 	private void prompt() {
-		System.out.println("");
 		switch (state) {
 		case IDLE:
 			promptIdle();
@@ -394,8 +394,6 @@ public class UaUserLayer {
 		stopVitextServer();
 		stopVitextClient();
 		
-		
-
 		runVitextClient();
 
 		String callId = UUID.randomUUID().toString();
@@ -403,11 +401,11 @@ public class UaUserLayer {
 		
 		RegisterMessage registerMessage = new RegisterMessage();
 	
-		registerMessage.setDestination("sip:bob@SMA");
+		registerMessage.setDestination("sip:proxy");
 		registerMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
 		registerMessage.setMaxForwards(70);
-		registerMessage.setToName("Bob");
-		registerMessage.setToUri("sip:bob@SMA");
+		registerMessage.setToName(userURIString);
+		registerMessage.setToUri("sip:"+userURI);
 		registerMessage.setFromName(userURIString);
 		registerMessage.setFromUri("sip:"+userURI);
 		registerMessage.setCallId(callId);
@@ -418,11 +416,12 @@ public class UaUserLayer {
 		registerMessage.setExpires("2");
 		registerMessage.setContentLength(registerMessage.toStringMessage().getBytes().length);
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(registerMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			System.out.println(registerMessage.toStringMessage());
+			
 			prompt();
-		}
+		}*/
+		System.out.println(registerMessage.toStringMessage());
 		
 		transactionLayer.callRegister(registerMessage);
 	
@@ -537,7 +536,10 @@ public class UaUserLayer {
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(busyHereMessage.getToName().equalsIgnoreCase(userURIstring)) {
 			System.out.print(busyHereMessage.toStringMessage());
-			prompt();
+			if(state!=IDLE) {
+				prompt();
+			}
+			
 		}
 		
 		transactionLayer.callBusyHere(busyHereMessage);

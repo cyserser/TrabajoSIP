@@ -42,7 +42,7 @@ public class UaTransportLayer {
 	}
 
 	public void startListening() {
-		System.out.println("Listening at " + listenPort + "...");
+		System.out.println("Listening at " + listenPort + "..."+"\n");
 		while (true) {
 			try {
 				byte[] buf = new byte[BUFSIZE];
