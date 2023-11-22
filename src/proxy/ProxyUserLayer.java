@@ -45,15 +45,24 @@ public class ProxyUserLayer {
 	private String userName = "";
 	private String userURIB = "";
 	private String userNameB = "";
+	
+	private String firstLine;
 
-	public ProxyUserLayer(int listenPort) throws SocketException {
+	public ProxyUserLayer(int listenPort, String firstLine) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
 		this.whiteList = new ProxyWhiteListArray();
+		this.firstLine = firstLine;
 	}
 
 	// RECIBO MENSAJE INVITE DEL LLAMANTE
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
-		System.out.println(inviteMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = inviteMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: inviteMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
+				
 		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
@@ -114,7 +123,12 @@ public class ProxyUserLayer {
 	
 	// Se recibe el mensaje de register 
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
-		System.out.println(registerMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = registerMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: registerMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
 		
 		int whiteListSize = whiteList.getWhiteList().size();
 		
@@ -152,7 +166,12 @@ public class ProxyUserLayer {
 	}
 	
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
-		System.out.println(ringingMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = ringingMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ringingMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
 		
 		ArrayList<String> vias = ringingMessage.getVias();
 		String origin = vias.get(0);
@@ -181,7 +200,12 @@ public class ProxyUserLayer {
 	
 	// on OK received
 	public void onOKReceived(OKMessage okMessage) throws IOException {
-		//System.out.println(okMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = okMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: okMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
 		
 		ArrayList<String> vias = okMessage.getVias();
 		String origin = vias.get(0);
@@ -201,7 +225,7 @@ public class ProxyUserLayer {
 				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
 				transactionLayer.echoOK(okMessage, originAddress, originPort);
-				System.out.println(okMessage);
+				//System.out.println(okMessage);
 				return;
 			}
 		}
@@ -212,7 +236,12 @@ public class ProxyUserLayer {
 	
 	// on BUSY HERE RECEIVED del llamado
 	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
-		System.out.println(busyHereMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = busyHereMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: busyHereMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
 		
 		ArrayList<String> vias = busyHereMessage.getVias();
 		String origin = vias.get(0);
@@ -272,7 +301,13 @@ public class ProxyUserLayer {
 		okMessage.setcSeqStr("INVITE");
 		okMessage.setContact(address + ":" + port);
 		
-		System.out.print(okMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = okMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: okMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
+
 		
 		return okMessage;
 	}
@@ -298,7 +333,12 @@ public class ProxyUserLayer {
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equals(notFoundMessage.getFromName().toLowerCase())) {
-				System.out.print(notFoundMessage.toStringMessage());
+				// Para mostrar el mensaje completo o solo la primera linea
+				String[] splittedMessage = notFoundMessage.toStringMessage().split("\n", 2);
+				String messageToPrint;
+				messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: notFoundMessage.toStringMessage());
+				System.out.println(messageToPrint + "\n");
+				//
 				
 			}
 		}
@@ -327,8 +367,12 @@ public class ProxyUserLayer {
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equals(tryingMessage.getFromName().toLowerCase())) {
-				System.out.print(tryingMessage.toStringMessage());
-				
+				// Para mostrar el mensaje completo o solo la primera linea
+				String[] splittedMessage = tryingMessage.toStringMessage().split("\n", 2);
+				String messageToPrint;
+				messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: tryingMessage.toStringMessage());
+				System.out.println(messageToPrint + "\n");
+				//
 			}
 		}
 
@@ -356,7 +400,13 @@ public class ProxyUserLayer {
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equals(serviceUnavailableMessage.getFromName().toLowerCase())) {
-				System.out.print(serviceUnavailableMessage.toStringMessage());	
+				// Para mostrar el mensaje completo o solo la primera linea
+				String[] splittedMessage = serviceUnavailableMessage.toStringMessage().split("\n", 2);
+				String messageToPrint;
+				messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: serviceUnavailableMessage.toStringMessage());
+				System.out.println(messageToPrint + "\n");
+				//
+					
 			}
 		}
 

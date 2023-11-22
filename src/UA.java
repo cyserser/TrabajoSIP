@@ -7,8 +7,10 @@ public class UA {
 		int listenPort = Integer.parseInt(args[1]);
 		String proxyAddress = args[2];
 		int proxyPort = Integer.parseInt(args[3]);
+		String firstLine = args[4];
+		int expiresTime = Integer.parseInt(args[5]);
 		
-		UaUserLayer userLayer = new UaUserLayer(userURI, listenPort, proxyAddress, proxyPort);
+		UaUserLayer userLayer = new UaUserLayer(userURI, listenPort, proxyAddress, proxyPort, firstLine, expiresTime);
 		
 		new Thread() {
 			@Override

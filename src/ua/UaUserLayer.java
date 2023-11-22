@@ -52,16 +52,20 @@ public class UaUserLayer {
 	private int listenPort;
 	private String userURI;
 	private String userB;
+	private String firstLine;
+	private int expiresTime;
 
 	private Process vitextClient = null;
 	private Process vitextServer = null;
 
-	public UaUserLayer(String userURI, int listenPort, String proxyAddress, int proxyPort)
+	public UaUserLayer(String userURI, int listenPort, String proxyAddress, int proxyPort, String firstLine, int expiresTime)
 			throws SocketException, UnknownHostException {
 		this.transactionLayer = new UaTransactionLayer(listenPort, proxyAddress, proxyPort, this);
 		this.listenPort = listenPort;
 		this.rtpPort = listenPort + 1;
 		this.userURI = userURI;
+		this.firstLine = firstLine;
+		this.expiresTime = expiresTime;
 	}
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
@@ -83,14 +87,33 @@ public class UaUserLayer {
 	
 	// OK MESSAGE RECEIVED
 	public void onOKReceived(OKMessage okMessage) throws IOException {
-		this.Message = "OK";
 		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		String other = "";
+		// Para mostrar el mensaje completo o solo la primera linea
+		if(okMessage.getToName().equals(userURIstring))
+		{
+			other = "proxy";
+		}
+		else
+		{
+			other = okMessage.getToName();
+		}
+		String commInfo = okMessage.toStringMessage().substring(0,okMessage.toStringMessage().indexOf(" "))
+				+ " " + other + " -> " + userURIstring;
+		String[] splittedMessage = okMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: okMessage.toStringMessage());
+		System.out.println(commInfo);
+		System.out.println(messageToPrint + "\n");
+		//
+		
+		this.Message = "OK";
 		if(state == CALLING || state == PROCEEDING_A) {
 			state = TERMINATED_A;
 		}
-		System.out.println(okMessage.toStringMessage());
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		
 		if(okMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			
 			prompt();
@@ -103,7 +126,13 @@ public class UaUserLayer {
 	
 	// 404 NOT FOUND (usuario que no existe cuando lo introducimos por teclado)
 	public void onNotFoundReceived(NotFoundMessage notFoundMessage) throws IOException {
-		System.out.println(notFoundMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = notFoundMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: notFoundMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
+		
 		this.Message = "NOT FOUND";
 		state = COMPLETED_A;
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
@@ -115,7 +144,12 @@ public class UaUserLayer {
 	
 	// 100 TRYING
 	public void onTryingReceived(TryingMessage tryingMessage) throws IOException {
-		System.out.println(tryingMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = tryingMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: tryingMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
 		this.Message = "TRYING";
 		state = PROCEEDING_A;
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
@@ -127,7 +161,12 @@ public class UaUserLayer {
 	
 	// 180 RINING
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
-		System.out.println(ringingMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = ringingMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ringingMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
 		this.Message = "RINGING";
 		state = PROCEEDING_A;
 		
@@ -140,7 +179,12 @@ public class UaUserLayer {
 	}
 	
 	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
-		System.out.println(busyHereMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = busyHereMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: busyHereMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
 		this.Message = "BUSY";
 		state = COMPLETED_A;
 		
@@ -433,7 +477,15 @@ public class UaUserLayer {
 			
 			prompt();
 		}*/
-		System.out.println(registerMessage.toStringMessage());
+		// Para mostrar el mensaje completo o solo la primera linea
+		String commInfo = registerMessage.toStringMessage().substring(0,registerMessage.toStringMessage().indexOf(" "))
+				+ " " + userURIString + " -> " + registerMessage.getDestination().toString();
+		String[] splittedMessage = registerMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: registerMessage.toStringMessage());
+		System.out.println(commInfo);
+		System.out.println(messageToPrint + "\n");
+		//
 		
 		transactionLayer.callRegister(registerMessage);
 	

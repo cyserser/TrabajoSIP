@@ -154,6 +154,14 @@ public class OKMessage extends SIPMessage {
     public void setSdp(SDPMessage sdp) {
         this.sdp = sdp;
     }
+    
+    // Nos devuelve la primera linea
+    public String toStringFirstLine()
+    {
+    	String ok;
+        ok = "SIP/2.0 200 OK\n";
+        return ok;
+    }
 
     @Override
     public String toStringMessage() {
