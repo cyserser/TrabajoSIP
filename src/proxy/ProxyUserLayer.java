@@ -38,6 +38,7 @@ public class ProxyUserLayer {
 	private int stateA;
 	private int stateB;
 	
+	//NO CASO ESTA MAL
 	private int originPort = 0;
 	private String originAddress = "";
 	private String userURI = "";
@@ -54,6 +55,12 @@ public class ProxyUserLayer {
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
 		System.out.println(inviteMessage.toStringMessage());
 		
+		ArrayList<String> vias = inviteMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		String originAddress = originParts[0];
+		int originPort = Integer.parseInt(originParts[1]);
+		
 		int whiteListSize = whiteList.getWhiteList().size();
 		
 		//Comprobar si el llamante esta en la lista
@@ -61,7 +68,7 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getFromName())) {
 				stateA = CALLING;
-				System.out.println(inviteMessage.toStringMessage());
+				//System.out.println(inviteMessage.toStringMessage());
 			} 
 			else
 			{
@@ -80,21 +87,29 @@ public class ProxyUserLayer {
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getToName())) {
-				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
-				originPort = whiteList.getWhiteList().get(i).getUserPort();
+				System.out.println(whiteList.getWhiteList().get(i).getUserPort());
+				String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
+				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
 				
-				transactionLayer.echoInvite(inviteMessage, originAddress, originPort);
-				System.out.println(inviteMessage.toStringMessage());
-				
-				// INFORMAR AL USUARIO DE QUE SE ESTA INTENTANDO CONECTAR CON EL USUSARIO A LA QUE QUIERE INVITAR
-				transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
-				System.out.println(TryingMessage());
-				
-				return;
+				// El usuario puede estar en la lista pero no estar registrado
+				if(destinationPort!=0)
+				{
+					// INVITAMOS AL LLAMADO
+					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
+					//System.out.println(inviteMessage.toStringMessage());
+					
+					// Informar al LLAMANTE de que se esta intentando
+					transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
+					//System.out.println(TryingMessage());
+					
+					return;
+				}
 			}
 		}
+		
+		// Si el llamado no esta conectado/registrado
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage());
+		//System.out.println(NotFoundMessage());
 	}
 	
 	// Se recibe el mensaje de register 
@@ -115,16 +130,18 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equals(registerMessage.getFromName())) {
 				
+				//System.out.println("Puerto origen: " + originPort );
 				// Guardamos su direccion y puerto
+				
 				whiteList.getWhiteList().get(i).setUserAddress(originAddress);
 				whiteList.getWhiteList().get(i).setUserPort(originPort);
-				whiteList.getWhiteList().get(i).setName(registerMessage.getFromName());
-				this.originAddress = originAddress;
+				whiteList.getWhiteList().get(i).setUserName(registerMessage.getFromName());
+				/*this.originAddress = originAddress;
 				this.originPort = originPort;
 				this.userURI = registerMessage.getFromUri();
-				this.userName = registerMessage.getFromName();
-				
-				transactionLayer.echoOK(OKMessage(), originAddress, originPort);
+				this.userName = registerMessage.getFromName();*/
+		
+				transactionLayer.echoOK(OKMessage(whiteList.getWhiteList().get(i)), originAddress, originPort);
 				//System.out.println(OKMessage());
 				return;
 			}
@@ -136,6 +153,12 @@ public class ProxyUserLayer {
 	
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
 		System.out.println(ringingMessage.toStringMessage());
+		
+		ArrayList<String> vias = ringingMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		String originAddress = originParts[0];
+		int originPort = Integer.parseInt(originParts[1]);
 	
 		stateB = PROCEEDING_B;
 		
@@ -145,9 +168,9 @@ public class ProxyUserLayer {
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equals(ringingMessage.getToName().toLowerCase())) {
-				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
-				originPort = whiteList.getWhiteList().get(i).getUserPort();
-				transactionLayer.echoRinging(ringingMessage, originAddress, originPort);
+				String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
+				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
+				transactionLayer.echoRinging(ringingMessage, destinationAddress, destinationPort);
 				System.out.println(ringingMessage);
 				return;
 			}
@@ -159,6 +182,12 @@ public class ProxyUserLayer {
 	// on OK received
 	public void onOKReceived(OKMessage okMessage) throws IOException {
 		//System.out.println(okMessage.toStringMessage());
+		
+		ArrayList<String> vias = okMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		String originAddress = originParts[0];
+		int originPort = Integer.parseInt(originParts[1]);
 
 		stateB = TERMINATED_B;
 		
@@ -184,6 +213,11 @@ public class ProxyUserLayer {
 	// on BUSY HERE RECEIVED del llamado
 	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
 		System.out.println(busyHereMessage.toStringMessage());
+		
+		ArrayList<String> vias = busyHereMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		String originAddress = originParts[0];
 
 		stateB = COMPLETED_B;
 				
@@ -216,35 +250,29 @@ public class ProxyUserLayer {
 	
 	
 	// 200 OK message al llamante
-	private OKMessage OKMessage() throws IOException {
+	private OKMessage OKMessage(ProxyWhiteList whiteList) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
 		
+		int port = whiteList.getUserPort();
+		String address = whiteList.getUserAddress();
+		String name = whiteList.getUserName();
+		
 		OKMessage okMessage = new OKMessage();	
 		
-
 		okMessage.setVias(new ArrayList<String>
-		(Arrays.asList(this.originAddress+ ":" + this.originPort)));
+		(Arrays.asList(address + ":" + port)));
 		
-		okMessage.setToName(this.userName);
-		okMessage.setToUri(this.userURI);
-		okMessage.setFromName(this.userName);
-		okMessage.setFromUri(this.userURI);
+		okMessage.setToName(name);
+		okMessage.setToUri("sip:"+name+"@SMA");
+		okMessage.setFromName(name);
+		okMessage.setFromUri("sip:"+name+"@SMA");
 		okMessage.setCallId(callId);
 		okMessage.setcSeqNumber("1");
 		okMessage.setcSeqStr("INVITE");
-		okMessage.setContact(this.originAddress + ":" + this.originPort);
+		okMessage.setContact(address + ":" + port);
 		
 		System.out.print(okMessage.toStringMessage());
-		
-		/*int whiteListSize = whiteList.getWhiteList().size();
-		for(int i = 0; i < whiteListSize; i++)
-		{
-			if(getFromWhiteList(i).equals(okMessage.getFromName().toLowerCase())) {
-				
-				
-			}
-		}*/
 		
 		return okMessage;
 	}

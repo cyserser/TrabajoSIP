@@ -27,6 +27,7 @@ public class UaUserLayer {
 	private static final int TRYING = 2;
 	private static final int WAITING = 3;
 	private String Message = "";
+	
 	//Estados llamante
 	private static final int IDLE = 0;
 	private static final int CALLING = 1;
@@ -50,6 +51,7 @@ public class UaUserLayer {
 	private int rtpPort;
 	private int listenPort;
 	private String userURI;
+	private String userB;
 
 	private Process vitextClient = null;
 	private Process vitextServer = null;
@@ -66,11 +68,17 @@ public class UaUserLayer {
 		System.out.println("Received INVITE from " + inviteMessage.getFromName());
 		state = PROCEEDING_B;
 		runVitextServer();
+		
+		userB = inviteMessage.getFromName();
+		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(inviteMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			prompt();
+		if(inviteMessage.getToName().equalsIgnoreCase(userURIstring)) {	
 		}
-		commandRinging("");
+		
+		commandRinging("", inviteMessage.getFromName());
+		
+		prompt();
+		
 	}
 	
 	// OK MESSAGE RECEIVED
@@ -128,7 +136,7 @@ public class UaUserLayer {
 			prompt();
 		}
 		runVitextServer();
-		ringingTimer();
+		//ringingTimer();
 	}
 	
 	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
@@ -329,7 +337,7 @@ public class UaUserLayer {
 		{
 			if(line.length()==1)
 			{
-				commandOK("");
+				commandOK("", userB);
 			}
 		}
 		
@@ -337,7 +345,7 @@ public class UaUserLayer {
 		{
 			if(line.length()==1)
 			{
-				commandBusy("");
+				commandBusy("", userB);
 			}
 		}
 		else {
@@ -349,16 +357,20 @@ public class UaUserLayer {
 		stopVitextServer();
 		stopVitextClient();
 		
-		
-		state = CALLING;
+		this.state = CALLING;
 		
 		System.out.println("Inviting...");
 		
+		
 		runVitextClient();
-
 		String callId = UUID.randomUUID().toString();
+		
+		// El nombre del llamado
 		String nameToSend = line.substring(line.indexOf(" ")).trim();
-		System.out.println("Sending to:" + nameToSend);
+		
+		// El nombre del llamante
+		String userURIString = userURI.substring(0, userURI.indexOf("@"));
+		//System.out.println("Sending to:" + nameToSend);
 		
 		SDPMessage sdpMessage = new SDPMessage();
 		sdpMessage.setIp(this.myAddress);
@@ -366,13 +378,13 @@ public class UaUserLayer {
 		sdpMessage.setOptions(RTPFLOWS);
 
 		InviteMessage inviteMessage = new InviteMessage();
-		inviteMessage.setDestination("sip:bob@SMA");
+		inviteMessage.setDestination("sip:"+nameToSend+"@SMA");
 		inviteMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
 		inviteMessage.setMaxForwards(70);
 		inviteMessage.setToName(nameToSend);
-		inviteMessage.setToUri("sip:bob@SMA");
-		inviteMessage.setFromName("Alice");
-		inviteMessage.setFromUri("sip:alice@SMA");
+		inviteMessage.setToUri("sip:"+nameToSend+"@SMA");
+		inviteMessage.setFromName(userURIString);
+		inviteMessage.setFromUri("sip:"+userURIString+"@SMA");
 		inviteMessage.setCallId(callId);
 		inviteMessage.setcSeqNumber("1");
 		inviteMessage.setcSeqStr("INVITE");
@@ -458,7 +470,7 @@ public class UaUserLayer {
 		return timeout;
 	}
 	
-	private void commandRinging(String line) throws IOException {
+	private void commandRinging(String line, String fromName) throws IOException {
 		stopVitextServer();
 		stopVitextClient();
 		
@@ -470,8 +482,8 @@ public class UaUserLayer {
 		RingingMessage ringingMessage = new RingingMessage();
 	
 		ringingMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
-		ringingMessage.setToName("Bob");
-		ringingMessage.setToUri("sip:bob@SMA");
+		ringingMessage.setToName(fromName);
+		ringingMessage.setToUri("sip:"+fromName+"@SMA");
 		ringingMessage.setFromName(userURIString);
 		ringingMessage.setFromUri("sip:"+userURI);
 		ringingMessage.setCallId(callId);
@@ -481,8 +493,8 @@ public class UaUserLayer {
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(ringingMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			System.out.print(ringingMessage.toStringMessage());
-			prompt();
+			//System.out.print(ringingMessage.toStringMessage());
+			//prompt();
 		}
 		
 		transactionLayer.callRinging(ringingMessage);
@@ -490,19 +502,21 @@ public class UaUserLayer {
 	}
 	
 	// 200 OK message (lo envia el llamado)
-	private void commandOK(String line) throws IOException {
+	private void commandOK(String line, String fromName) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
+		
+		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		
 		state = TERMINATED_B;
 		
 		OKMessage okMessage = new OKMessage();	
 		
 		okMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
-		okMessage.setToName("Bob");
-		okMessage.setToUri("sip:bob@SMA");
-		okMessage.setFromName("Alice");
-		okMessage.setFromUri("sip:alice@SMA");
+		okMessage.setToName(fromName);
+		okMessage.setToUri("sip:"+fromName+"@SMA");
+		okMessage.setFromName(userURIString);
+		okMessage.setFromUri("sip:"+userURI);
 		okMessage.setCallId(callId);
 		okMessage.setcSeqNumber("1");
 		okMessage.setcSeqStr("INVITE");
@@ -518,17 +532,19 @@ public class UaUserLayer {
 	}
 	
 	// 486 BUSY
-	private void commandBusy(String line) throws IOException {
+	private void commandBusy(String line, String fromName) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
+		
+		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		
 		BusyHereMessage busyHereMessage = new BusyHereMessage();	
 		
 		busyHereMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
-		busyHereMessage.setToName("Bob");
-		busyHereMessage.setToUri("sip:bob@SMA");
-		busyHereMessage.setFromName("Alice");
-		busyHereMessage.setFromUri("sip:alice@SMA");
+		busyHereMessage.setToName(fromName);
+		busyHereMessage.setToUri("sip:"+fromName+"@SMA");
+		busyHereMessage.setFromName(userURIString);
+		busyHereMessage.setFromUri("sip:"+userURI);
 		busyHereMessage.setCallId(callId);
 		busyHereMessage.setcSeqNumber("1");
 		busyHereMessage.setcSeqStr("INVITE");
