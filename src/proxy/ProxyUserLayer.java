@@ -47,6 +47,8 @@ public class ProxyUserLayer {
 	private String userNameB = "";
 	
 	private String firstLine;
+	private String userA;
+	private String userB;
 
 	public ProxyUserLayer(int listenPort, String firstLine) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
@@ -62,7 +64,9 @@ public class ProxyUserLayer {
 		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: inviteMessage.toStringMessage());
 		System.out.println(messageToPrint + "\n");
 		//
-				
+		
+		userA=inviteMessage.getFromName();
+		userB=inviteMessage.getToName();
 		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
@@ -315,19 +319,29 @@ public class ProxyUserLayer {
 	// 404 not found message
 	private NotFoundMessage NotFoundMessage() throws IOException {
 		
+		int port = 0;
+		String address = "";
+		for(int i = 0; i < whiteList.getWhiteList().size(); i++)
+		{
+			if(getFromWhiteList(i).equals(userA)) {
+				port = whiteList.getWhiteList().get(i).getUserPort();
+				address = whiteList.getWhiteList().get(i).getUserAddress();
+			}
+		}
+		
 		String callId = UUID.randomUUID().toString();
 		
 		NotFoundMessage notFoundMessage = new NotFoundMessage();	
 		
-		notFoundMessage.setVias(new ArrayList<String>(Arrays.asList(originAddress + ":" + originPort)));
-		notFoundMessage.setToName("Bob");
-		notFoundMessage.setToUri("sip:bob@SMA");
-		notFoundMessage.setFromName("Alice");
-		notFoundMessage.setFromUri("sip:alice@SMA");
+		notFoundMessage.setVias(new ArrayList<String>(Arrays.asList(address + ":" + port)));
+		notFoundMessage.setToName(userB);
+		notFoundMessage.setToUri("sip:"+userB+"@SMA");
+		notFoundMessage.setFromName(userA);
+		notFoundMessage.setFromUri("sip:"+userA+"@SMA");
 		notFoundMessage.setCallId(callId);
 		notFoundMessage.setcSeqNumber("1");
 		notFoundMessage.setcSeqStr("INVITE");
-		notFoundMessage.setContact(originAddress + ":" + originPort);
+		notFoundMessage.setContact(address + ":" + port);
 		
 		int whiteListSize = whiteList.getWhiteList().size();
 		for(int i = 0; i < whiteListSize; i++)
@@ -349,15 +363,25 @@ public class ProxyUserLayer {
 	// 100 trying message
 	private TryingMessage TryingMessage() throws IOException {
 		
+		int port = 0;
+		String address = "";
+		for(int i = 0; i < whiteList.getWhiteList().size(); i++)
+		{
+			if(getFromWhiteList(i).equals(userA)) {
+				port = whiteList.getWhiteList().get(i).getUserPort();
+				address = whiteList.getWhiteList().get(i).getUserAddress();
+			}
+		}
+		
 		String callId = UUID.randomUUID().toString();
 		
 		TryingMessage tryingMessage = new TryingMessage();	
 		
-		tryingMessage.setVias(new ArrayList<String>(Arrays.asList(originAddress + ":" + originPort)));
-		tryingMessage.setToName("Bob");
-		tryingMessage.setToUri("sip:bob@SMA");
-		tryingMessage.setFromName("Alice");
-		tryingMessage.setFromUri("sip:alice@SMA");
+		tryingMessage.setVias(new ArrayList<String>(Arrays.asList(address + ":" + port)));
+		tryingMessage.setToName(userB);
+		tryingMessage.setToUri("sip:"+userB+"@SMA");
+		tryingMessage.setFromName(userA);
+		tryingMessage.setFromUri("sip:"+userA+"@SMA");
 		tryingMessage.setCallId(callId);
 		tryingMessage.setcSeqNumber("1");
 		tryingMessage.setcSeqStr("INVITE");
@@ -382,15 +406,25 @@ public class ProxyUserLayer {
 	// 503 Service Unavailable
 	private ServiceUnavailableMessage ServiceUnavailableMessage() throws IOException {
 		
+		int port = 0;
+		String address = "";
+		for(int i = 0; i < whiteList.getWhiteList().size(); i++)
+		{
+			if(getFromWhiteList(i).equals(userA)) {
+				port = whiteList.getWhiteList().get(i).getUserPort();
+				address = whiteList.getWhiteList().get(i).getUserAddress();
+			}
+		}
+		
 		String callId = UUID.randomUUID().toString();
 		
 		ServiceUnavailableMessage serviceUnavailableMessage = new ServiceUnavailableMessage();	
 		
-		serviceUnavailableMessage.setVias(new ArrayList<String>(Arrays.asList(originAddress + ":" + originPort)));
-		serviceUnavailableMessage.setToName("Bob");
-		serviceUnavailableMessage.setToUri("sip:bob@SMA");
-		serviceUnavailableMessage.setFromName("Alice");
-		serviceUnavailableMessage.setFromUri("sip:alice@SMA");
+		serviceUnavailableMessage.setVias(new ArrayList<String>(Arrays.asList(address + ":" + port)));
+		serviceUnavailableMessage.setToName(userB);
+		serviceUnavailableMessage.setToUri("sip:"+userB+"@SMA");
+		serviceUnavailableMessage.setFromName(userA);
+		serviceUnavailableMessage.setFromUri("sip:"+userA+"@SMA");
 		serviceUnavailableMessage.setCallId(callId);
 		serviceUnavailableMessage.setcSeqNumber("1");
 		serviceUnavailableMessage.setcSeqStr("INVITE");
