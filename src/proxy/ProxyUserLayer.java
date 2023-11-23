@@ -16,6 +16,7 @@ import mensajesSIP.TryingMessage;
 import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ServiceUnavailableMessage;
+import mensajesSIP.ByeMessage;
 
 public class ProxyUserLayer {
 	private ProxyTransactionLayer transactionLayer;
@@ -49,6 +50,7 @@ public class ProxyUserLayer {
 	private String firstLine;
 	private String userA;
 	private String userB;
+	private boolean bIsConnected;
 
 	public ProxyUserLayer(int listenPort, String firstLine) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
@@ -65,6 +67,10 @@ public class ProxyUserLayer {
 		System.out.println(messageToPrint + "\n");
 		//
 		
+		//REDUCIMOS EL MAXFORWARDS
+		inviteMessage.setMaxForwards(inviteMessage.getMaxForwards()-1);
+		
+		int whiteListSize = whiteList.getWhiteList().size();
 		userA=inviteMessage.getFromName();
 		userB=inviteMessage.getToName();
 		
@@ -74,8 +80,41 @@ public class ProxyUserLayer {
 		String originAddress = originParts[0];
 		int originPort = Integer.parseInt(originParts[1]);
 		
-		int whiteListSize = whiteList.getWhiteList().size();
+		// PROXY ENCAMINA EL INVITE A LLAMADO SI ESTAN EN TERMINATED
+		if(stateA == TERMINATED_A && stateB == TERMINATED_B)
+		{
+			for(int i = 0; i < whiteListSize; i++)
+			{
+				if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getToName())) {
+					System.out.println(whiteList.getWhiteList().get(i).getUserPort());
+					String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
+					int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
+					
+					// El usuario puede estar en la lista pero no estar registrado
+					if(destinationPort!=0)
+					{
+						// INVITAMOS AL LLAMADO
+						transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
+						//bIsConnected = true;
+						System.out.println(inviteMessage.toStringMessage());
+						
+						// Informar al LLAMANTE de que se esta intentando
+						transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
+						//System.out.println(TryingMessage().toStringMessage());
+						
+						return;
+					}
+				}
+			}
+		} 
 		
+		// Esperando a coger o no la llamada 
+		else if(stateA == PROCEEDING_A || stateB == PROCEEDING_B)
+		{
+			transactionLayer.echoServiceUnavailable(ServiceUnavailableMessage(), originAddress,originPort);
+			return;
+		}
+
 		//Comprobar si el llamante esta en la lista
 		for(int i = 0; i < whiteListSize; i++)
 		{
@@ -109,6 +148,7 @@ public class ProxyUserLayer {
 				{
 					// INVITAMOS AL LLAMADO
 					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
+					bIsConnected = true;
 					System.out.println(inviteMessage.toStringMessage());
 					
 					// Informar al LLAMANTE de que se esta intentando
@@ -229,6 +269,7 @@ public class ProxyUserLayer {
 				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
 				transactionLayer.echoOK(okMessage, originAddress, originPort);
+				stateA = TERMINATED_A;
 				//System.out.println(okMessage);
 				return;
 			}
@@ -251,7 +292,8 @@ public class ProxyUserLayer {
 		String origin = vias.get(0);
 		String[] originParts = origin.split(":");
 		String originAddress = originParts[0];
-
+		int originPort = Integer.parseInt(originParts[1]);
+		
 		stateB = COMPLETED_B;
 				
 		int whiteListSize = whiteList.getWhiteList().size();
@@ -259,11 +301,11 @@ public class ProxyUserLayer {
 		//Comprobar si el usuario esta en la lista
 		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(getFromWhiteList(i).equals(busyHereMessage.getToName().toLowerCase())) {
+			if(getFromWhiteList(i).equals(busyHereMessage.getFromName().toLowerCase())) {
 				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
 				transactionLayer.echoBusyHere(busyHereMessage, originAddress, originPort);
-				System.out.println(busyHereMessage);
+				//System.out.println(busyHereMessage);
 				return;
 			}
 		}
@@ -271,6 +313,43 @@ public class ProxyUserLayer {
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
 		System.out.println(NotFoundMessage().toStringMessage());
 	}
+	
+		// on BYE RECEIVED del llamado
+		public void onByeMessageReceived(ByeMessage byeMessage) throws IOException {
+			// Para mostrar el mensaje completo o solo la primera linea
+			String[] splittedMessage = byeMessage.toStringMessage().split("\n", 2);
+			String messageToPrint;
+			messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: byeMessage.toStringMessage());
+			System.out.println(messageToPrint + "\n");
+			//
+			
+			ArrayList<String> vias = byeMessage.getVias();
+			String origin = vias.get(0);
+			String[] originParts = origin.split(":");
+			String originAddress = originParts[0];
+			int originPort = Integer.parseInt(originParts[1]);
+			
+			stateB = IDLE;
+			
+					
+			int whiteListSize = whiteList.getWhiteList().size();
+			
+			//Comprobar si el usuario esta en la lista
+			for(int i = 0; i < whiteListSize; i++)
+			{
+				if(getFromWhiteList(i).equals(byeMessage.getToName().toLowerCase())) {
+					originAddress = whiteList.getWhiteList().get(i).getUserAddress();
+					originPort = whiteList.getWhiteList().get(i).getUserPort();
+					transactionLayer.echoBye(byeMessage, originAddress, originPort);
+					stateA = IDLE;
+					//System.out.println(busyHereMessage);
+					return;
+				}
+			}
+			
+			transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+			System.out.println(NotFoundMessage().toStringMessage());
+		}
 
 	private String getFromWhiteList(int i) {
 		String whiteListUser;

@@ -12,6 +12,8 @@ import mensajesSIP.SIPMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.BusyHereMessage;
+import mensajesSIP.ServiceUnavailableMessage;
+import mensajesSIP.ByeMessage;
 
 public class UaTransactionLayer {
 	/// MAL
@@ -45,15 +47,11 @@ public class UaTransactionLayer {
 		if (sipMessage instanceof InviteMessage) {
 			InviteMessage inviteMessage = (InviteMessage) sipMessage;
 			//String estado = inviteMessage.getcSeqStr();
-			switch (state) {
-			case IDLE:
+			if(inviteMessage != null)
+			{
 				state = PROCEEDING_B;
 				userLayer.onInviteReceived(inviteMessage);
-				break;
-			default:
-				System.err.println("Unexpected message, throwing away (INVITE)");
-				break;
-			}
+			}	
 		} 
 		/*else if (sipMessage instanceof RegisterMessage) {
 			RegisterMessage registerMessage = (RegisterMessage) sipMessage;
@@ -123,6 +121,26 @@ public class UaTransactionLayer {
 			}
 		}
 		
+		// 503 unavailable
+		else if (sipMessage instanceof ServiceUnavailableMessage) {
+			ServiceUnavailableMessage serviceUnavaibleMessage = (ServiceUnavailableMessage) sipMessage;
+			if(serviceUnavaibleMessage != null)
+			{
+				state = COMPLETED_A;
+				userLayer.onServiceUnavailableReceived(serviceUnavaibleMessage);
+			}
+		}
+		
+		// bye
+		else if (sipMessage instanceof ByeMessage) {
+			ByeMessage byeMessage = (ByeMessage) sipMessage;
+			if(byeMessage != null)
+			{
+				state = IDLE;
+				userLayer.onByeReceived(byeMessage);
+			}
+		}
+		
 		else {
 			System.err.println("Unexpected message, throwing away (RESTO)");
 		}
@@ -152,5 +170,10 @@ public class UaTransactionLayer {
 	// 486 Busy here (BOB)
 	public void callBusyHere(BusyHereMessage busyHereMessage) throws IOException {
 		transportLayer.sendToProxy(busyHereMessage);
+	}
+	
+	// BYE
+	public void callBye(ByeMessage byeMessage) throws IOException {
+		transportLayer.sendToProxy(byeMessage);
 	}
 }

@@ -11,6 +11,8 @@ import mensajesSIP.SIPMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.BusyHereMessage;
+import mensajesSIP.ByeMessage;
+import mensajesSIP.ServiceUnavailableMessage;
 
 public class ProxyTransactionLayer {
 	//MAL
@@ -103,7 +105,15 @@ public class ProxyTransactionLayer {
 	public void echoBusyHere(BusyHereMessage busyHereMessage, String address, int port) throws IOException {
 		transportLayer.send(busyHereMessage, address, port);
 	}
-			
+	// mensaje 503 service unavailable
+	public void echoServiceUnavailable(ServiceUnavailableMessage serviceUnavailableMessage, String address, int port) throws IOException {
+		transportLayer.send(serviceUnavailableMessage, address, port);
+	}	
+	
+	// mensaje bye bye
+	public void echoBye(ByeMessage byeMessage, String address, int port) throws IOException {
+		transportLayer.send(byeMessage, address, port);
+	}
 		
 	public void startListening() {
 		transportLayer.startListening();

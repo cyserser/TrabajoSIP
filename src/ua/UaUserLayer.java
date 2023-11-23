@@ -17,9 +17,11 @@ import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
+import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.RingingMessage;
 import mensajesSIP.BusyHereMessage;
+import mensajesSIP.ByeMessage;
 
 public class UaUserLayer {
 	
@@ -71,18 +73,27 @@ public class UaUserLayer {
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
 		System.out.println("Received INVITE from " + inviteMessage.getFromName());
-		state = PROCEEDING_B;
-		runVitextServer();
 		
 		userA = inviteMessage.getFromName();
 		userB = inviteMessage.getToName();
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(inviteMessage.getToName().equalsIgnoreCase(userURIstring)) {	
+		if(state == TERMINATED_A)
+		{
+			commandBusy("");
+			return;
 		}
 		
-		commandRinging("");
+		state = PROCEEDING_B;
+		runVitextServer();
 		
+		
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(inviteMessage.getToName().equalsIgnoreCase(userURIstring)) {	
+		}*/
+	
+		commandRinging("");
+		System.out.println("Introduce an s to accept the call or deny with a n...");
+			
 		prompt();
 		
 	}
@@ -197,6 +208,46 @@ public class UaUserLayer {
 		
 		runVitextServer();
 	}
+	
+	// 503 receving
+	public void onServiceUnavailableReceived(ServiceUnavailableMessage serviceUnavailableMessage) throws IOException {
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = serviceUnavailableMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: serviceUnavailableMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
+		this.Message = "BUSY";
+		state = COMPLETED_A;
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(serviceUnavailableMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
+		}
+		
+		runVitextServer();
+	}
+	
+	// BYE
+	public void onByeReceived(ByeMessage byeMessage) throws IOException {
+		// Para mostrar el mensaje completo o solo la primera linea
+		String[] splittedMessage = byeMessage.toStringMessage().split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: byeMessage.toStringMessage());
+		System.out.println(messageToPrint + "\n");
+		//
+		this.Message = "BUSY";
+		state = COMPLETED_A;
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(byeMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
+		}
+		
+		runVitextServer();
+	}
+	
+	
 
 	public void startListeningNetwork() {
 		transactionLayer.startListeningNetwork();
@@ -343,8 +394,7 @@ public class UaUserLayer {
 	}
 	
 	private void promptProceedingB() {
-		System.out.println(this.userURI);
-		System.out.println("Introduce an s to accept the call or deny with a n...");
+		//System.out.println(this.userURI);
 	}
 	private void promptCalling() {
 		System.out.println(this.userURI);
@@ -607,6 +657,34 @@ public class UaUserLayer {
 		}
 		
 		transactionLayer.callBusyHere(busyHereMessage);
+	}
+	
+	// BYE BYE
+	private void commandBye(String line) throws IOException {
+		
+		String callId = UUID.randomUUID().toString();
+		
+		ByeMessage byeMessage = new ByeMessage();	
+		
+		byeMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
+		byeMessage.setToName(userB);
+		byeMessage.setToUri("sip:"+userB+"@SMA");
+		byeMessage.setFromName(userA);
+		byeMessage.setFromUri("sip:"+userA+"@SMA");
+		byeMessage.setCallId(callId);
+		byeMessage.setcSeqNumber("1");
+		byeMessage.setcSeqStr("INVITE");
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(byeMessage.getToName().equalsIgnoreCase(userURIstring)) {
+			System.out.print(byeMessage.toStringMessage());
+			if(state!=IDLE) {
+				prompt();
+			}
+			
+		}
+		
+		transactionLayer.callBye(byeMessage);
 	}
 	
 
