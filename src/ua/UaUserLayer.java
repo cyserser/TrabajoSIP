@@ -51,14 +51,15 @@ public class UaUserLayer {
 	private int rtpPort;
 	private int listenPort;
 	private String userURI;
+	private String userA;
 	private String userB;
 	private String firstLine;
-	private int expiresTime;
+	private String expiresTime;
 
 	private Process vitextClient = null;
 	private Process vitextServer = null;
 
-	public UaUserLayer(String userURI, int listenPort, String proxyAddress, int proxyPort, String firstLine, int expiresTime)
+	public UaUserLayer(String userURI, int listenPort, String proxyAddress, int proxyPort, String firstLine, String expiresTime)
 			throws SocketException, UnknownHostException {
 		this.transactionLayer = new UaTransactionLayer(listenPort, proxyAddress, proxyPort, this);
 		this.listenPort = listenPort;
@@ -73,13 +74,14 @@ public class UaUserLayer {
 		state = PROCEEDING_B;
 		runVitextServer();
 		
-		userB = inviteMessage.getFromName();
+		userA = inviteMessage.getFromName();
+		userB = inviteMessage.getToName();
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(inviteMessage.getToName().equalsIgnoreCase(userURIstring)) {	
 		}
 		
-		commandRinging("", inviteMessage.getFromName());
+		commandRinging("");
 		
 		prompt();
 		
@@ -381,7 +383,7 @@ public class UaUserLayer {
 		{
 			if(line.length()==1)
 			{
-				commandOK("", userB);
+				commandOK("");
 			}
 		}
 		
@@ -389,7 +391,7 @@ public class UaUserLayer {
 		{
 			if(line.length()==1)
 			{
-				commandBusy("", userB);
+				commandBusy("");
 			}
 		}
 		else {
@@ -469,7 +471,7 @@ public class UaUserLayer {
 		registerMessage.setcSeqStr("REGISTER");
 		registerMessage.setContact(myAddress + ":" + listenPort);
 		registerMessage.setAuthorization("Authorization");
-		registerMessage.setExpires("2");
+		registerMessage.setExpires(expiresTime);
 		registerMessage.setContentLength(registerMessage.toStringMessage().getBytes().length);
 		
 		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
@@ -498,15 +500,14 @@ public class UaUserLayer {
 		runVitextClient();
 
 		String callId = UUID.randomUUID().toString();
-		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		
 		RequestTimeoutMessage timeout = new RequestTimeoutMessage();
 	
 		timeout.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
-		timeout.setToName("Bob");
-		timeout.setToUri("sip:bob@SMA");
-		timeout.setFromName(userURIString);
-		timeout.setFromUri("sip:"+userURI);
+		timeout.setToName(userB);
+		timeout.setToUri("sip:"+userB+"@SMA");
+		timeout.setFromName(userA);
+		timeout.setFromUri("sip:"+userA+"@SMA");
 		timeout.setCallId(callId);
 		timeout.setcSeqNumber("1");
 		timeout.setcSeqStr("REGISTER");
@@ -522,22 +523,21 @@ public class UaUserLayer {
 		return timeout;
 	}
 	
-	private void commandRinging(String line, String fromName) throws IOException {
+	private void commandRinging(String line) throws IOException {
 		stopVitextServer();
 		stopVitextClient();
 		
 		runVitextClient();
 
 		String callId = UUID.randomUUID().toString();
-		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		
 		RingingMessage ringingMessage = new RingingMessage();
 	
 		ringingMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
-		ringingMessage.setToName(fromName);
-		ringingMessage.setToUri("sip:"+fromName+"@SMA");
-		ringingMessage.setFromName(userURIString);
-		ringingMessage.setFromUri("sip:"+userURI);
+		ringingMessage.setToName(userB);
+		ringingMessage.setToUri("sip:"+userB+"@SMA");
+		ringingMessage.setFromName(userA);
+		ringingMessage.setFromUri("sip:"+userA+"@SMA");
 		ringingMessage.setCallId(callId);
 		ringingMessage.setcSeqNumber("1");
 		ringingMessage.setcSeqStr("REGISTER");
@@ -554,21 +554,19 @@ public class UaUserLayer {
 	}
 	
 	// 200 OK message (lo envia el llamado)
-	private void commandOK(String line, String fromName) throws IOException {
+	private void commandOK(String line) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
-		
-		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		
 		state = TERMINATED_B;
 		
 		OKMessage okMessage = new OKMessage();	
 		
 		okMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
-		okMessage.setToName(fromName);
-		okMessage.setToUri("sip:"+fromName+"@SMA");
-		okMessage.setFromName(userURIString);
-		okMessage.setFromUri("sip:"+userURI);
+		okMessage.setToName(userB);
+		okMessage.setToUri("sip:"+userB+"@SMA");
+		okMessage.setFromName(userA);
+		okMessage.setFromUri("sip:"+userA+"@SMA");
 		okMessage.setCallId(callId);
 		okMessage.setcSeqNumber("1");
 		okMessage.setcSeqStr("INVITE");
@@ -584,19 +582,17 @@ public class UaUserLayer {
 	}
 	
 	// 486 BUSY
-	private void commandBusy(String line, String fromName) throws IOException {
+	private void commandBusy(String line) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
-		
-		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		
 		BusyHereMessage busyHereMessage = new BusyHereMessage();	
 		
 		busyHereMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
-		busyHereMessage.setToName(fromName);
-		busyHereMessage.setToUri("sip:"+fromName+"@SMA");
-		busyHereMessage.setFromName(userURIString);
-		busyHereMessage.setFromUri("sip:"+userURI);
+		busyHereMessage.setToName(userB);
+		busyHereMessage.setToUri("sip:"+userB+"@SMA");
+		busyHereMessage.setFromName(userA);
+		busyHereMessage.setFromUri("sip:"+userA+"@SMA");
 		busyHereMessage.setCallId(callId);
 		busyHereMessage.setcSeqNumber("1");
 		busyHereMessage.setcSeqStr("INVITE");

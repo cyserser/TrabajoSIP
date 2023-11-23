@@ -81,7 +81,7 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getFromName())) {
 				stateA = CALLING;
-				//System.out.println(inviteMessage.toStringMessage());
+				System.out.println(inviteMessage.toStringMessage());
 			} 
 			else
 			{
@@ -109,11 +109,11 @@ public class ProxyUserLayer {
 				{
 					// INVITAMOS AL LLAMADO
 					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
-					//System.out.println(inviteMessage.toStringMessage());
+					System.out.println(inviteMessage.toStringMessage());
 					
 					// Informar al LLAMANTE de que se esta intentando
 					transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
-					//System.out.println(TryingMessage());
+					//System.out.println(TryingMessage().toStringMessage());
 					
 					return;
 				}
@@ -122,7 +122,7 @@ public class ProxyUserLayer {
 		
 		// Si el llamado no esta conectado/registrado
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		//System.out.println(NotFoundMessage());
+		System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
 	// Se recibe el mensaje de register 
@@ -160,13 +160,13 @@ public class ProxyUserLayer {
 				this.userName = registerMessage.getFromName();*/
 		
 				transactionLayer.echoOK(OKMessage(whiteList.getWhiteList().get(i)), originAddress, originPort);
-				//System.out.println(OKMessage());
+				//System.out.println(OKMessage(whiteList.getWhiteList().get(i)).toStringMessage());
 				return;
 			}
 		}
 		
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage());
+		System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
@@ -194,12 +194,12 @@ public class ProxyUserLayer {
 				String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
 				transactionLayer.echoRinging(ringingMessage, destinationAddress, destinationPort);
-				System.out.println(ringingMessage);
+				//System.out.println(ringingMessage);
 				return;
 			}
 		}
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage());
+		System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
 	// on OK received
@@ -235,7 +235,7 @@ public class ProxyUserLayer {
 		}
 		
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage());
+		System.out.println(NotFoundMessage().toString());
 	}
 	
 	// on BUSY HERE RECEIVED del llamado
@@ -269,7 +269,7 @@ public class ProxyUserLayer {
 		}
 		
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage());
+		System.out.println(NotFoundMessage().toStringMessage());
 	}
 
 	private String getFromWhiteList(int i) {
