@@ -190,7 +190,7 @@ public class ProxyUserLayer {
 		//Comprobar si el usuario esta en la lista
 		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(getFromWhiteList(i).equals(ringingMessage.getToName().toLowerCase())) {
+			if(getFromWhiteList(i).equals(ringingMessage.getFromName().toLowerCase())) {
 				String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
 				transactionLayer.echoRinging(ringingMessage, destinationAddress, destinationPort);
@@ -225,7 +225,7 @@ public class ProxyUserLayer {
 		//Comprobar si el usuario esta en la lista
 		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(getFromWhiteList(i).equals(okMessage.getToName().toLowerCase())) {
+			if(getFromWhiteList(i).equals(okMessage.getFromName().toLowerCase())) {
 				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
 				transactionLayer.echoOK(okMessage, originAddress, originPort);
