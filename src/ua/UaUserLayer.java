@@ -22,6 +22,7 @@ import mensajesSIP.TryingMessage;
 import mensajesSIP.RingingMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ByeMessage;
+import mensajesSIP.ACKMessage;
 
 public class UaUserLayer {
 	
@@ -227,6 +228,25 @@ public class UaUserLayer {
 		
 		runVitextServer();
 	}
+	
+	// ACK
+		public void onACKReceived(ACKMessage ACKMessage) throws IOException {
+			// Para mostrar el mensaje completo o solo la primera linea
+			String[] splittedMessage = ACKMessage.toStringMessage().split("\n", 2);
+			String messageToPrint;
+			messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ACKMessage.toStringMessage());
+			System.out.println(messageToPrint + "\n");
+			//
+			//this.Message = "BUSY";
+			//state = COMPLETED_A;
+			
+			String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+			if(ACKMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+				prompt();
+			}
+			
+			runVitextServer();
+		}
 	
 	// BYE
 	public void onByeReceived(ByeMessage byeMessage) throws IOException {
@@ -658,6 +678,34 @@ public class UaUserLayer {
 		
 		transactionLayer.callBusyHere(busyHereMessage);
 	}
+	
+	// ACK
+		private void commandACK(String line) throws IOException {
+			
+			String callId = UUID.randomUUID().toString();
+			
+			ACKMessage ACKMessage = new ACKMessage();	
+			
+			ACKMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
+			ACKMessage.setToName(userB);
+			ACKMessage.setToUri("sip:"+userB+"@SMA");
+			ACKMessage.setFromName(userA);
+			ACKMessage.setFromUri("sip:"+userA+"@SMA");
+			ACKMessage.setCallId(callId);
+			ACKMessage.setcSeqNumber("1");
+			ACKMessage.setcSeqStr("INVITE");
+			
+			String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+			if(ACKMessage.getToName().equalsIgnoreCase(userURIstring)) {
+				System.out.print(ACKMessage.toStringMessage());
+				if(state!=IDLE) {
+					prompt();
+				}
+				
+			}
+			
+			transactionLayer.callACK(ACKMessage);
+		}
 	
 	// BYE BYE
 	private void commandBye(String line) throws IOException {

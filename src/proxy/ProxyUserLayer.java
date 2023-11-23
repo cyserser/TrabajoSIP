@@ -16,7 +16,8 @@ import mensajesSIP.TryingMessage;
 import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ServiceUnavailableMessage;
-import mensajesSIP.ByeMessage;
+import mensajesSIP.ACKMessage;
+//import mensajesSIP.ByeMessage;
 
 public class ProxyUserLayer {
 	private ProxyTransactionLayer transactionLayer;
@@ -314,8 +315,43 @@ public class ProxyUserLayer {
 		System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
+	// on ACK received
+		public void onACKReceived(ACKMessage ACKMessage) throws IOException {
+			// Para mostrar el mensaje completo o solo la primera linea
+			String[] splittedMessage = ACKMessage.toStringMessage().split("\n", 2);
+			String messageToPrint;
+			messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ACKMessage.toStringMessage());
+			System.out.println(messageToPrint + "\n");
+			//
+			
+			ArrayList<String> vias = ACKMessage.getVias();
+			String origin = vias.get(0);
+			String[] originParts = origin.split(":");
+			String originAddress = originParts[0];
+			int originPort = Integer.parseInt(originParts[1]);
+			
+			//stateB = COMPLETED_B;
+					
+			//int whiteListSize = whiteList.getWhiteList().size();
+			
+			//Comprobar si el usuario esta en la lista
+			/*for(int i = 0; i < whiteListSize; i++)
+			{
+				if(getFromWhiteList(i).equals(ACKMessage.getFromName().toLowerCase())) {
+					originAddress = whiteList.getWhiteList().get(i).getUserAddress();
+					originPort = whiteList.getWhiteList().get(i).getUserPort();
+					transactionLayer.echoACK(ACKMessage, originAddress, originPort);
+					//System.out.println(busyHereMessage);
+					return;
+				}
+			}*/
+			
+			transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+			System.out.println(NotFoundMessage().toStringMessage());
+		}
+	
 		// on BYE RECEIVED del llamado
-		public void onByeMessageReceived(ByeMessage byeMessage) throws IOException {
+		/*public void onByeMessageReceived(ByeMessage byeMessage) throws IOException {
 			// Para mostrar el mensaje completo o solo la primera linea
 			String[] splittedMessage = byeMessage.toStringMessage().split("\n", 2);
 			String messageToPrint;
@@ -349,7 +385,7 @@ public class ProxyUserLayer {
 			
 			transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
 			System.out.println(NotFoundMessage().toStringMessage());
-		}
+		}*/
 
 	private String getFromWhiteList(int i) {
 		String whiteListUser;
@@ -525,6 +561,51 @@ public class ProxyUserLayer {
 
 		return serviceUnavailableMessage;
 	}
+	
+	// ACK
+		private ACKMessage ACKMessage() throws IOException {
+			
+			int port = 0;
+			String address = "";
+			for(int i = 0; i < whiteList.getWhiteList().size(); i++)
+			{
+				if(getFromWhiteList(i).equals(userA)) {
+					port = whiteList.getWhiteList().get(i).getUserPort();
+					address = whiteList.getWhiteList().get(i).getUserAddress();
+				}
+			}
+			
+			String callId = UUID.randomUUID().toString();
+			
+			ACKMessage ACKMessage = new ACKMessage();	
+			
+			ACKMessage.setVias(new ArrayList<String>(Arrays.asList(address + ":" + port)));
+			ACKMessage.setToName(userB);
+			ACKMessage.setToUri("sip:"+userB+"@SMA");
+			ACKMessage.setFromName(userA);
+			ACKMessage.setFromUri("sip:"+userA+"@SMA");
+			ACKMessage.setCallId(callId);
+			ACKMessage.setcSeqNumber("1");
+			ACKMessage.setcSeqStr("INVITE");
+			ACKMessage.setMaxForwards(70);
+			ACKMessage.setContentLength(0);
+			
+			int whiteListSize = whiteList.getWhiteList().size();
+			for(int i = 0; i < whiteListSize; i++)
+			{
+				if(getFromWhiteList(i).equals(ACKMessage.getFromName().toLowerCase())) {
+					// Para mostrar el mensaje completo o solo la primera linea
+					String[] splittedMessage = ACKMessage.toStringMessage().split("\n", 2);
+					String messageToPrint;
+					messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ACKMessage.toStringMessage());
+					System.out.println(messageToPrint + "\n");
+					//
+						
+				}
+			}
+
+			return ACKMessage;
+		}
 
 	public void startListening() {
 		transactionLayer.startListening();

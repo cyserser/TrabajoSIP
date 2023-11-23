@@ -11,6 +11,7 @@ import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SIPMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.RequestTimeoutMessage;
+import mensajesSIP.ACKMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.ByeMessage;
@@ -171,6 +172,11 @@ public class UaTransactionLayer {
 	public void callBusyHere(BusyHereMessage busyHereMessage) throws IOException {
 		transportLayer.sendToProxy(busyHereMessage);
 	}
+	
+	// ACK
+		public void callACK(ACKMessage ACKMessage) throws IOException {
+			transportLayer.sendToProxy(ACKMessage);
+		}
 	
 	// BYE
 	public void callBye(ByeMessage byeMessage) throws IOException {
