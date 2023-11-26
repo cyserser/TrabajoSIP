@@ -12,6 +12,7 @@ import mensajesSIP.RingingMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
+import mensajesSIP.SIPMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.BusyHereMessage;
@@ -22,7 +23,6 @@ import mensajesSIP.ACKMessage;
 public class ProxyUserLayer {
 	private ProxyTransactionLayer transactionLayer;
 	
-
 	private ProxyWhiteListArray whiteList;
 	
 	//Estados llamante
@@ -52,12 +52,20 @@ public class ProxyUserLayer {
 	private String userA;
 	private String userB;
 	private String proxyName = "sip:proxy";
+	private String proxyAddress;
+	private int proxyPort;
 	private boolean bIsConnected;
 
 	public ProxyUserLayer(int listenPort, String firstLine) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
 		this.whiteList = new ProxyWhiteListArray();
 		this.firstLine = firstLine;
+	}
+	
+	// Setteamos las direccion y puerto del proxy
+	public void setProxyData(String proxyAddress, int port) {
+		this.proxyAddress = proxyAddress;
+		this.proxyPort = port;
 	}
 
 	// RECIBO MENSAJE INVITE DEL LLAMANTE
@@ -146,13 +154,10 @@ public class ProxyUserLayer {
 				if(destinationPort!=0)
 				{
 					// INVITAMOS AL LLAMADO
-					String via1 = String.join(", ", inviteMessage.getVias());
-					String via2 = "127.0.0.1:5060";
-					ArrayList<String> viaFinal = new ArrayList<>();
-					viaFinal.add(via1);
-					viaFinal.add(via2);
-					inviteMessage.setVias(viaFinal);
-					System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH "+viaFinal);
+					
+					// añadimos las vias
+					addViasMethod(inviteMessage);
+					//System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH "+viaFinal);
 					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
 					
 					messageType = inviteMessage.toStringMessage();
@@ -174,6 +179,8 @@ public class ProxyUserLayer {
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
 		//System.out.println(NotFoundMessage().toStringMessage());
 	}
+
+	
 	
 	// Se recibe el mensaje de register 
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
@@ -237,6 +244,8 @@ public class ProxyUserLayer {
 			if(getFromWhiteList(i).equals(ringingMessage.getFromName().toLowerCase())) {
 				String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
+				// añadimos las vias
+				addViasMethod(ringingMessage);
 				transactionLayer.echoRinging(ringingMessage, destinationAddress, destinationPort);
 				//System.out.println(ringingMessage);
 				return;
@@ -268,6 +277,8 @@ public class ProxyUserLayer {
 			if(getFromWhiteList(i).equals(okMessage.getFromName().toLowerCase())) {
 				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
+				// añadimos las vias
+				addViasMethod(okMessage);
 				transactionLayer.echoOK(okMessage, originAddress, originPort);
 				stateA = TERMINATED_A;
 				//System.out.println(okMessage);
@@ -300,6 +311,8 @@ public class ProxyUserLayer {
 			if(getFromWhiteList(i).equals(busyHereMessage.getFromName().toLowerCase())) {
 				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
+				// añadimos las vias
+				addViasMethod(busyHereMessage);
 				transactionLayer.echoBusyHere(busyHereMessage, originAddress, originPort);
 				//System.out.println(busyHereMessage);
 				return;
@@ -572,6 +585,63 @@ public class ProxyUserLayer {
 		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: messageType);
 		System.out.println(commInfo);
 		System.out.println(messageToPrint + "\n");
+	}
+	
+	// Metodo para añadir las vias generico para diferentes tipos de mensajes
+	private void addViasMethod(SIPMessage sipMessage) {
+		if(sipMessage!=null)
+		{
+			ArrayList<String> viaFinal = new ArrayList<>();
+			String via1;
+			String via2;
+			
+			if (sipMessage instanceof InviteMessage) {
+				InviteMessage inviteMessage = (InviteMessage) sipMessage;
+				
+				via1 = String.join(", ", inviteMessage.getVias());
+				via2 = this.proxyAddress+":"+this.proxyPort;
+			
+				viaFinal.add(via1);
+				viaFinal.add(via2);
+				inviteMessage.setVias(viaFinal);
+			} 
+			else if(sipMessage instanceof OKMessage)
+			{
+				OKMessage okMessage = (OKMessage) sipMessage;
+				via1 = String.join(", ", okMessage.getVias());
+				via2 = this.proxyAddress+":"+this.proxyPort;
+			
+				viaFinal.add(via1);
+				viaFinal.add(via2);
+				okMessage.setVias(viaFinal);
+				
+			}
+			else if(sipMessage instanceof RingingMessage)
+			{
+				RingingMessage ringingMessage = (RingingMessage) sipMessage;
+				via1 = String.join(", ", ringingMessage.getVias());
+				via2 = this.proxyAddress+":"+this.proxyPort;
+			
+				viaFinal.add(via1);
+				viaFinal.add(via2);
+				ringingMessage.setVias(viaFinal);
+				
+			}
+			else if(sipMessage instanceof BusyHereMessage)
+			{
+				BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
+				via1 = String.join(", ", busyHereMessage.getVias());
+				via2 = this.proxyAddress+":"+this.proxyPort;
+			
+				viaFinal.add(via1);
+				viaFinal.add(via2);
+				busyHereMessage.setVias(viaFinal);
+			}
+			else
+			{
+				System.err.println("Error no se reconoce el mensaje...");
+			}
+		}
 	}
 
 }

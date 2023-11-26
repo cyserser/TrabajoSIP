@@ -41,6 +41,11 @@ public class ProxyTransactionLayer {
 		this.userLayer = userLayer;
 		this.transportLayer = new ProxyTransportLayer(listenPort, this);
 	}
+	
+	// Setteamos la direccion y puerto del proxy
+	public void setProxyData(String address, int port) {
+		userLayer.setProxyData(address, port);
+	}
 
 	public void onMessageReceived(SIPMessage sipMessage) throws IOException {
 		if (sipMessage instanceof InviteMessage) {

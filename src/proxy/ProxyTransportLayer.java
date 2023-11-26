@@ -34,18 +34,23 @@ public class ProxyTransportLayer {
 	public void startListening() {
 		System.out.println("Listening at " + listenPort + "..." +"\n");
 		while (true) {
-			try {
+			try { 
 				byte[] buf = new byte[BUFSIZE];
 				DatagramPacket packet = new DatagramPacket(buf, buf.length);
 				socket.receive(packet);
+				
+				// Extraemos la direccion del proxy(127.0.0.1)
+                InetAddress proxyAddress = packet.getAddress();
+				
 				String msg = new String(packet.getData());
 				SIPMessage sipMessage = SIPMessage.parseMessage(msg);
 				transactionLayer.onMessageReceived(sipMessage);
+				transactionLayer.setProxyData(proxyAddress.toString().substring(1), this.listenPort); 
+                //System.out.println("El address el proxy es: " + proxyAddress.toString().substring(1));
 			} catch (Exception e) {
 				System.err.println(e.getMessage());
 				e.printStackTrace();
 			}
 		}
 	}
-
 }

@@ -332,15 +332,7 @@ public class UaUserLayer {
 	}
 	//REGISTRO AUTOMÁTICO AL INICIAR SIN CREDENCIALES
 	public void autoRegistering() {
-		try {
-			commandRegister("", state);
-			
-			ourTimer();
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		ourTimer();
 	}
 
 	private void ourTimer() {
