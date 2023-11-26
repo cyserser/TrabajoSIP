@@ -132,6 +132,16 @@ public class UaTransactionLayer {
 			}
 		}
 		
+		// ACK
+		else if (sipMessage instanceof ACKMessage) {
+			ACKMessage ACKMessage = (ACKMessage) sipMessage;
+			if(ACKMessage != null)
+			{
+				state = IDLE;
+				userLayer.onACKReceived(ACKMessage);
+			}
+		}
+		
 		// bye
 		else if (sipMessage instanceof ByeMessage) {
 			ByeMessage byeMessage = (ByeMessage) sipMessage;
@@ -174,12 +184,12 @@ public class UaTransactionLayer {
 	}
 	
 	// ACK
-		public void callACK(ACKMessage ACKMessage) throws IOException {
-			transportLayer.sendToProxy(ACKMessage);
-		}
+	public void callACK(ACKMessage ACKMessage, String addressB, int portB) throws IOException {
+		transportLayer.send(ACKMessage, addressB, portB);
+	}
 	
 	// BYE
-	public void callBye(ByeMessage byeMessage) throws IOException {
-		transportLayer.sendToProxy(byeMessage);
+	public void callBye(ByeMessage byeMessage, String addressA, int portA) throws IOException {
+		transportLayer.send(byeMessage, addressA, portA);
 	}
 }

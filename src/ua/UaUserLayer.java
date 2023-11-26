@@ -57,8 +57,8 @@ public class UaUserLayer {
 	private String userB;
 	private String firstLine;
 	private String expiresTime;
-	private int puertoA;
-	private int puertoB;
+	private int puertoA; // llamante
+	private int puertoB; // llamado
 
 	private Process vitextClient = null;
 	private Process vitextServer = null;
@@ -80,6 +80,17 @@ public class UaUserLayer {
 		
 		String messageType = inviteMessage.toStringMessage();
 		showArrowInMessage(userA, userB, messageType);
+		
+		ArrayList<String> vias = inviteMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		
+		int originPort = Integer.parseInt(originParts[1]);
+		
+		puertoB = originPort;
+		
+		System.out.println("El puerto del A es: " + listenPort);
+		System.out.println("El puerto del B es: " + puertoB);
 		
 		//System.out.println(inviteMessage.toStringMessage());
 
@@ -124,24 +135,23 @@ public class UaUserLayer {
 		showArrowInMessage(proxyName, userURIString, messageType);
 		//
 		
-		
 		if(state == CALLING || state == PROCEEDING_A) {
 			state = TERMINATED_A;
 			
 			//Se establece la llamada y comienza a enviarse ACK
+			commandACK(this.listenPort, puertoB);
+			System.out.println("Type BYE to finish");
+			//ACKTimer();
 			//puertoB = okMessage.getVias();
 			
 		}
 		
-		
 		if(okMessage.getFromName().equalsIgnoreCase(userURIString)) {
-			
 			prompt();
-			
 		}
 		
-		runVitextServer();
 		
+		runVitextServer();
 	}
 
 	
@@ -154,16 +164,12 @@ public class UaUserLayer {
 		showArrowInMessage(userFrom, proxyName, messageType);
 		//
 		
-		
 		state = COMPLETED_A;
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(notFoundMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			prompt();
 		}
-		
-		
-		
-		
+	
 		runVitextServer();
 	}
 	
@@ -186,17 +192,33 @@ public class UaUserLayer {
 	// 180 RINING
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
 		this.Message = "RINGING";
+		
+		userA = ringingMessage.getFromName();
+		userB = ringingMessage.getToName();
+		
 		// Para mostrar el mensaje completo o solo la primera linea
 		String messageType = ringingMessage.toStringMessage();
 		showArrowInMessage(userFrom, userTo, messageType);
 		//
+		ArrayList<String> vias = ringingMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		String originAddress = originParts[0];
 		
+		int originPort = Integer.parseInt(originParts[1]);
+		
+		puertoB = originPort;
+		
+		System.out.println("El puerto del A es: " + listenPort);
+		System.out.println("El puerto del B es: " + puertoB);
+				
 		state = PROCEEDING_A;
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(ringingMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			//prompt();
-		}
+		}*/
+		
 		runVitextServer();
 		//ringingTimer();
 	}
@@ -236,26 +258,52 @@ public class UaUserLayer {
 	
 	// ACK
 	public void onACKReceived(ACKMessage ACKMessage) throws IOException {
+		this.Message = "ACK";
 		String messageType = ACKMessage.toStringMessage();
-		showArrowInMessage(userFrom, userTo, messageType);
+		showArrowInMessage(ACKMessage.getFromName(), ACKMessage.getToName(), messageType);
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		/*ACKMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" 
+				+ this.listenPort + ":" + puertoB)));
+		
+		ArrayList<String> vias = ACKMessage.getVias();
+		String destination = vias.get(0);
+		String[] destinationParts = destination.split(":");
+
+		int destiantionPort = Integer.parseInt(destinationParts[2]);*/
+		
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(ACKMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			prompt();
-		}
-		
+		}*/
+		System.out.println("Type BYE to finish");
 		runVitextServer();
 	}
 	
 	// BYE
 	public void onByeReceived(ByeMessage byeMessage) throws IOException {
-		String messageType = byeMessage.toStringMessage();
-		showArrowInMessage(userFrom, userTo, messageType);
+		this.Message = "BYE";
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		ArrayList<String> vias = byeMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		String originAddress = originParts[0];
+		
+		int originPort = Integer.parseInt(originParts[1]);
+	
+		String messageType = byeMessage.toStringMessage();
+		if(this.listenPort == originPort)
+		{
+			showArrowInMessage(byeMessage.getToName(), byeMessage.getFromName(), messageType);
+		}
+		else
+		{
+			showArrowInMessage(byeMessage.getFromName(), byeMessage.getToName(), messageType);
+		}
+	
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(byeMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			prompt();
-		}
+		}*/
 		
 		runVitextServer();
 	}
@@ -363,6 +411,38 @@ public class UaUserLayer {
 		// Programar el Timer para que se ejecute cada 2 segundos
 		timer.scheduleAtFixedRate(task, 0, time*1000);
 	}
+	
+	private void ACKTimer() {
+		Timer timer = new Timer();
+		System.out.println("ACK... ");
+		int time = 2;
+		int myPort = this.listenPort;
+		int otherPort = puertoB;
+		TimerTask task = new TimerTask() {
+			int counter=0;
+		    @Override
+		    public void run() {
+		        // Coloca la acción que deseas ejecutar aquí
+		    	try {
+					commandACK(myPort,otherPort);
+					System.out.println("Type BYE to finish");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		        if (Message.equals("BYE")) {
+		       		timer.cancel();
+		       	}
+		       	else {
+		       		
+		       		counter=counter+time;
+		       	}
+		    }
+		};
+
+		// Programar el Timer para que se ejecute cada 2 segundos
+		timer.scheduleAtFixedRate(task, 0, time*1000);
+	}
 
 	private void prompt() {
 		switch (state) {
@@ -455,6 +535,13 @@ public class UaUserLayer {
 			if(line.length()==1)
 			{
 				commandBusy("");
+			}
+		}
+		else if(line.equalsIgnoreCase("BYE"))
+		{
+			if(line.length()==3)
+			{
+				commandBye("");
 			}
 		}
 		else {
@@ -690,7 +777,7 @@ public class UaUserLayer {
 	}
 	
 	// ACK
-	private void commandACK(String line) throws IOException {
+	private void commandACK(int puertoA, int puertoB) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
 		
@@ -704,20 +791,21 @@ public class UaUserLayer {
 		ACKMessage.setCallId(callId);
 		ACKMessage.setcSeqNumber("1");
 		ACKMessage.setcSeqStr("INVITE");
+		ACKMessage.setDestination("sip:"+userA+"@SMA");
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(ACKMessage.getToName().equalsIgnoreCase(userURIstring)) {
 			System.out.print(ACKMessage.toStringMessage());
 			if(state!=IDLE) {
 				prompt();
 			}
 			
-		}
+		}*/
 		
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(userA, userB, messageType);
 		
-		transactionLayer.callACK(ACKMessage);
+		transactionLayer.callACK(ACKMessage, this.myAddress, puertoB);
 	}
 	
 	// BYE BYE
@@ -727,6 +815,35 @@ public class UaUserLayer {
 		
 		ByeMessage byeMessage = new ByeMessage();	
 		
+		//String tempUserA = "";
+		//String tempUserB = "";
+		
+		// Si 9100 == 
+		/*System.out.println("Puerto listen: " + this.listenPort);
+		System.out.println("PuertoB : " + puertoB);
+		System.out.println("User A : " + userA);
+		System.out.println("User B : " + userB);*/
+		
+		//tempUserA = userA; 
+		
+		//userA = userB;
+		
+		//userB = tempUserA;
+		//System.out.println("User A : " + userA);
+		//System.out.println("User B : " + userB);
+		
+		/*if(this.listenPort == puertoB)
+		{
+	
+		}*/
+		/*else
+		{
+			tempUserA = userA;
+			userA = userB;
+			userB = tempUserA;
+		}*/
+		
+		byeMessage.setDestination("sip:"+userB+"@SMA");
 		byeMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
 		byeMessage.setToName(userB);
 		byeMessage.setToUri("sip:"+userB+"@SMA");
@@ -736,19 +853,10 @@ public class UaUserLayer {
 		byeMessage.setcSeqNumber("1");
 		byeMessage.setcSeqStr("INVITE");
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(byeMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			System.out.print(byeMessage.toStringMessage());
-			if(state!=IDLE) {
-				prompt();
-			}
-			
-		}
-		
 		String messageType = byeMessage.toStringMessage();
-		showArrowInMessage(userB, userA, messageType);
+		showArrowInMessage(userA, userB, messageType);
 		
-		transactionLayer.callBye(byeMessage);
+		transactionLayer.callBye(byeMessage, this.myAddress, puertoB);
 	}
 	
 
