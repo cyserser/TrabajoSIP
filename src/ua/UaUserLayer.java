@@ -57,6 +57,8 @@ public class UaUserLayer {
 	private String userB;
 	private String firstLine;
 	private String expiresTime;
+	private int puertoA;
+	private int puertoB;
 
 	private Process vitextClient = null;
 	private Process vitextServer = null;
@@ -125,6 +127,10 @@ public class UaUserLayer {
 		
 		if(state == CALLING || state == PROCEEDING_A) {
 			state = TERMINATED_A;
+			
+			//Se establece la llamada y comienza a enviarse ACK
+			//puertoB = okMessage.getVias();
+			
 		}
 		
 		
