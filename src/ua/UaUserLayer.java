@@ -335,7 +335,7 @@ public class UaUserLayer {
 		try {
 			commandRegister("", state);
 			
-			//ourTimer();
+			ourTimer();
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -347,24 +347,24 @@ public class UaUserLayer {
 		Timer timer = new Timer();
 		int time = 2;
 		TimerTask task = new TimerTask() {
-			int counter=0;
+			//int counter=0;
 		    @Override
 		    public void run() {
 		        // Coloca la acción que deseas ejecutar aquí
 		        try {
 		        	if (Message.length()==0) {
-		        		if(counter>=2) {
-		            		commandRegister("", state);
-		            		System.out.println("El valor del temporizador es: " + counter +"s");
-		            	}
-						counter=counter+time;
+		        		commandRegister("", state);
+		        		//if(counter>=2) {
+		            		//System.out.println("El valor del temporizador es: " + counter +"s");
+		            	//}
+						//counter=counter+time;
 		        	}
 		        	
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-		        if(counter>10) {
+		        /*if(counter>10) {
 		        	try {
 		        		System.out.println(commandTimeout("").toStringMessage());
 		        		timer.cancel();
@@ -372,7 +372,7 @@ public class UaUserLayer {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-		        }
+		        }*/
 		    }
 		};
 
@@ -595,7 +595,7 @@ public class UaUserLayer {
 		}
 		
 		String messageType = inviteMessage.toStringMessage();
-		showArrowInMessage(nameToSend, userURIString, messageType);
+		showArrowInMessage(userURIString, nameToSend, messageType);
 		
 		this.state = CALLING;
 		
@@ -635,7 +635,7 @@ public class UaUserLayer {
 		}*/
 		// Para mostrar el mensaje completo o solo la primera linea
 		String messageType = registerMessage.toStringMessage();
-		showArrowInMessage(proxyName, userURIString, messageType);
+		showArrowInMessage(userURIString, proxyName, messageType);
 		//
 		
 		transactionLayer.callRegister(registerMessage);

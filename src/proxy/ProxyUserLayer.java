@@ -77,7 +77,6 @@ public class ProxyUserLayer {
 		String[] originParts = origin.split(":");
 		String originAddress = originParts[0];
 		int originPort = Integer.parseInt(originParts[1]);
-		
 		// PROXY ENCAMINA EL INVITE A LLAMADO SI ESTAN EN TERMINATED
 		if(stateA == TERMINATED_A && stateB == TERMINATED_B)
 		{
@@ -91,16 +90,16 @@ public class ProxyUserLayer {
 					// El usuario puede estar en la lista pero no estar registrado
 					if(destinationPort!=0)
 					{
+						// Informar al LLAMANTE de que se esta intentando
+						transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
+						//System.out.println(TryingMessage().toStringMessage());
+						
 						// INVITAMOS AL LLAMADO
 						messageType = inviteMessage.toStringMessage();
 						showArrowInMessage(proxyName, userB, messageType);
 						transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
 						//bIsConnected = true;
 						//System.out.println(inviteMessage.toStringMessage());
-						
-						// Informar al LLAMANTE de que se esta intentando
-						transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
-						//System.out.println(TryingMessage().toStringMessage());
 						
 						return;
 					}
@@ -147,6 +146,13 @@ public class ProxyUserLayer {
 				if(destinationPort!=0)
 				{
 					// INVITAMOS AL LLAMADO
+					String via1 = String.join(", ", inviteMessage.getVias());
+					String via2 = "127.0.0.1:5060";
+					ArrayList<String> viaFinal = new ArrayList<>();
+					viaFinal.add(via1);
+					viaFinal.add(via2);
+					inviteMessage.setVias(viaFinal);
+					System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH "+viaFinal);
 					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
 					
 					messageType = inviteMessage.toStringMessage();
