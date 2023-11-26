@@ -26,11 +26,6 @@ import mensajesSIP.ACKMessage;
 
 public class UaUserLayer {
 	
-	private static final int REGISTERING = 1;
-	private static final int TRYING = 2;
-	private static final int WAITING = 3;
-	private String Message = "";
-	
 	//Estados llamante
 	private static final int IDLE = 0;
 	private static final int CALLING = 1;
@@ -44,7 +39,11 @@ public class UaUserLayer {
 	private static final int TERMINATED_B = 7;
 	
 	private int state = IDLE;
-
+	private String Message = "";
+	private String proxyName = "sip:proxy";
+	private String userTo;
+	private String userFrom;
+	
 	public static final ArrayList<Integer> RTPFLOWS = new ArrayList<Integer>(
 			Arrays.asList(new Integer[] { 96, 97, 98 }));
 
@@ -73,11 +72,15 @@ public class UaUserLayer {
 	}
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
-		System.out.println("Received INVITE from " + inviteMessage.getFromName());
 		
 		userA = inviteMessage.getFromName();
 		userB = inviteMessage.getToName();
 		
+		String messageType = inviteMessage.toStringMessage();
+		showArrowInMessage(userA, userB, messageType);
+		
+		//System.out.println(inviteMessage.toStringMessage());
+
 		if(state == TERMINATED_A)
 		{
 			commandBusy("");
@@ -101,34 +104,31 @@ public class UaUserLayer {
 	
 	// OK MESSAGE RECEIVED
 	public void onOKReceived(OKMessage okMessage) throws IOException {
+		this.Message = "OK";
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		String other = "";
+		String userURIString = userURI.substring(0, userURI.indexOf("@"));
+		//String other = "";
 		// Para mostrar el mensaje completo o solo la primera linea
-		if(okMessage.getToName().equals(userURIstring))
+		/*if(okMessage.getToName().equals(userURIString))
 		{
-			other = "proxy";
+			other = proxyName;
 		}
 		else
 		{
 			other = okMessage.getToName();
-		}
-		String commInfo = okMessage.toStringMessage().substring(0,okMessage.toStringMessage().indexOf(" "))
-				+ " " + other + " -> " + userURIstring;
-		String[] splittedMessage = okMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: okMessage.toStringMessage());
-		System.out.println(commInfo);
-		System.out.println(messageToPrint + "\n");
+		}*/
+		//
+		String messageType = okMessage.toStringMessage();
+		showArrowInMessage(proxyName, userURIString, messageType);
 		//
 		
-		this.Message = "OK";
+		
 		if(state == CALLING || state == PROCEEDING_A) {
 			state = TERMINATED_A;
 		}
 		
 		
-		if(okMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+		if(okMessage.getFromName().equalsIgnoreCase(userURIString)) {
 			
 			prompt();
 			
@@ -137,34 +137,38 @@ public class UaUserLayer {
 		runVitextServer();
 		
 	}
+
+	
 	
 	// 404 NOT FOUND (usuario que no existe cuando lo introducimos por teclado)
 	public void onNotFoundReceived(NotFoundMessage notFoundMessage) throws IOException {
+		this.Message = "NOT FOUND";
 		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = notFoundMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: notFoundMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
+		String messageType = notFoundMessage.toStringMessage();
+		showArrowInMessage(userFrom, proxyName, messageType);
 		//
 		
-		this.Message = "NOT FOUND";
+		
 		state = COMPLETED_A;
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(notFoundMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			prompt();
 		}
+		
+		
+		
+		
 		runVitextServer();
 	}
 	
 	// 100 TRYING
 	public void onTryingReceived(TryingMessage tryingMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = tryingMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: tryingMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
 		this.Message = "TRYING";
+		// Para mostrar el mensaje completo o solo la primera linea
+		String messageType = tryingMessage.toStringMessage();
+		showArrowInMessage(proxyName, userFrom, messageType);
+		//
+		
 		state = PROCEEDING_A;
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(tryingMessage.getFromName().equalsIgnoreCase(userURIstring)) {
@@ -175,36 +179,33 @@ public class UaUserLayer {
 	
 	// 180 RINING
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = ringingMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ringingMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
 		this.Message = "RINGING";
+		// Para mostrar el mensaje completo o solo la primera linea
+		String messageType = ringingMessage.toStringMessage();
+		showArrowInMessage(userFrom, userTo, messageType);
+		//
+		
 		state = PROCEEDING_A;
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(ringingMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			prompt();
+			//prompt();
 		}
 		runVitextServer();
 		//ringingTimer();
 	}
 	
 	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = busyHereMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: busyHereMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
 		this.Message = "BUSY";
+		String messageType = busyHereMessage.toStringMessage();
+		showArrowInMessage(userFrom, userTo, messageType);
+		//
+		
 		state = COMPLETED_A;
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(busyHereMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			prompt();
+			//prompt();
 		}
 		
 		runVitextServer();
@@ -212,13 +213,11 @@ public class UaUserLayer {
 	
 	// 503 receving
 	public void onServiceUnavailableReceived(ServiceUnavailableMessage serviceUnavailableMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = serviceUnavailableMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: serviceUnavailableMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
 		this.Message = "BUSY";
+		
+		String messageType = serviceUnavailableMessage.toStringMessage();
+		showArrowInMessage(proxyName, userTo, messageType);
+		
 		state = COMPLETED_A;
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
@@ -230,34 +229,22 @@ public class UaUserLayer {
 	}
 	
 	// ACK
-		public void onACKReceived(ACKMessage ACKMessage) throws IOException {
-			// Para mostrar el mensaje completo o solo la primera linea
-			String[] splittedMessage = ACKMessage.toStringMessage().split("\n", 2);
-			String messageToPrint;
-			messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ACKMessage.toStringMessage());
-			System.out.println(messageToPrint + "\n");
-			//
-			//this.Message = "BUSY";
-			//state = COMPLETED_A;
-			
-			String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-			if(ACKMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-				prompt();
-			}
-			
-			runVitextServer();
+	public void onACKReceived(ACKMessage ACKMessage) throws IOException {
+		String messageType = ACKMessage.toStringMessage();
+		showArrowInMessage(userFrom, userTo, messageType);
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(ACKMessage.getFromName().equalsIgnoreCase(userURIstring)) {
+			prompt();
 		}
+		
+		runVitextServer();
+	}
 	
 	// BYE
 	public void onByeReceived(ByeMessage byeMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = byeMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: byeMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
-		this.Message = "BUSY";
-		state = COMPLETED_A;
+		String messageType = byeMessage.toStringMessage();
+		showArrowInMessage(userFrom, userTo, messageType);
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(byeMessage.getFromName().equalsIgnoreCase(userURIstring)) {
@@ -473,19 +460,18 @@ public class UaUserLayer {
 		stopVitextServer();
 		stopVitextClient();
 		
-		this.state = CALLING;
-		
-		System.out.println("Inviting...");
-		
+		//System.out.println("Inviting...");
 		
 		runVitextClient();
 		String callId = UUID.randomUUID().toString();
 		
 		// El nombre del llamado
 		String nameToSend = line.substring(line.indexOf(" ")).trim();
+		userTo = nameToSend;
 		
 		// El nombre del llamante
 		String userURIString = userURI.substring(0, userURI.indexOf("@"));
+		userFrom = userURIString;
 		//System.out.println("Sending to:" + nameToSend);
 		
 		SDPMessage sdpMessage = new SDPMessage();
@@ -511,9 +497,14 @@ public class UaUserLayer {
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(inviteMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			System.out.print(inviteMessage.toStringMessage());
-			prompt();
+			//System.out.print(inviteMessage.toStringMessage());
+			//prompt();
 		}
+		
+		String messageType = inviteMessage.toStringMessage();
+		showArrowInMessage(nameToSend, userURIString, messageType);
+		
+		this.state = CALLING;
 		
 		transactionLayer.call(inviteMessage);
 	}
@@ -529,7 +520,7 @@ public class UaUserLayer {
 		
 		RegisterMessage registerMessage = new RegisterMessage();
 	
-		registerMessage.setDestination("sip:proxy");
+		registerMessage.setDestination(proxyName);
 		registerMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
 		registerMessage.setMaxForwards(70);
 		registerMessage.setToName(userURIString);
@@ -550,13 +541,8 @@ public class UaUserLayer {
 			prompt();
 		}*/
 		// Para mostrar el mensaje completo o solo la primera linea
-		String commInfo = registerMessage.toStringMessage().substring(0,registerMessage.toStringMessage().indexOf(" "))
-				+ " " + userURIString + " -> " + registerMessage.getDestination().toString();
-		String[] splittedMessage = registerMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: registerMessage.toStringMessage());
-		System.out.println(commInfo);
-		System.out.println(messageToPrint + "\n");
+		String messageType = registerMessage.toStringMessage();
+		showArrowInMessage(proxyName, userURIString, messageType);
 		//
 		
 		transactionLayer.callRegister(registerMessage);
@@ -590,6 +576,9 @@ public class UaUserLayer {
 			prompt();
 		}
 		
+		String messageType = timeout.toStringMessage();
+		showArrowInMessage(userA, proxyName, messageType);
+		
 		return timeout;
 	}
 	
@@ -613,11 +602,16 @@ public class UaUserLayer {
 		ringingMessage.setcSeqStr("REGISTER");
 		ringingMessage.setContentLength(ringingMessage.toStringMessage().getBytes().length);
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(ringingMessage.getToName().equalsIgnoreCase(userURIstring)) {
 			//System.out.print(ringingMessage.toStringMessage());
 			//prompt();
-		}
+		}*/
+		
+		String messageType = ringingMessage.toStringMessage();
+		showArrowInMessage(userB, proxyName, messageType);
+		
+		prompt();
 		
 		transactionLayer.callRinging(ringingMessage);
 		
@@ -642,11 +636,16 @@ public class UaUserLayer {
 		okMessage.setcSeqStr("INVITE");
 		okMessage.setContact(this.myAddress + ":" + this.listenPort);
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(okMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			System.out.print(okMessage.toStringMessage());
-			prompt();
-		}
+			//System.out.print(okMessage.toStringMessage());
+			
+		}*/
+		
+		String messageType = okMessage.toStringMessage();
+		showArrowInMessage(userB, proxyName, messageType);
+		
+		prompt();
 		
 		transactionLayer.callOK(okMessage);
 	}
@@ -667,45 +666,53 @@ public class UaUserLayer {
 		busyHereMessage.setcSeqNumber("1");
 		busyHereMessage.setcSeqStr("INVITE");
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(busyHereMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			System.out.print(busyHereMessage.toStringMessage());
+			//System.out.print(busyHereMessage.toStringMessage());
+			if(state!=IDLE) {
+				//prompt();
+			}
+			
+		}*/
+		
+		String messageType = busyHereMessage.toStringMessage();
+		showArrowInMessage(userB, proxyName, messageType);
+		
+		prompt();
+		
+		transactionLayer.callBusyHere(busyHereMessage);
+	}
+	
+	// ACK
+	private void commandACK(String line) throws IOException {
+		
+		String callId = UUID.randomUUID().toString();
+		
+		ACKMessage ACKMessage = new ACKMessage();	
+		
+		ACKMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
+		ACKMessage.setToName(userB);
+		ACKMessage.setToUri("sip:"+userB+"@SMA");
+		ACKMessage.setFromName(userA);
+		ACKMessage.setFromUri("sip:"+userA+"@SMA");
+		ACKMessage.setCallId(callId);
+		ACKMessage.setcSeqNumber("1");
+		ACKMessage.setcSeqStr("INVITE");
+		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		if(ACKMessage.getToName().equalsIgnoreCase(userURIstring)) {
+			System.out.print(ACKMessage.toStringMessage());
 			if(state!=IDLE) {
 				prompt();
 			}
 			
 		}
 		
-		transactionLayer.callBusyHere(busyHereMessage);
+		String messageType = ACKMessage.toStringMessage();
+		showArrowInMessage(userA, userB, messageType);
+		
+		transactionLayer.callACK(ACKMessage);
 	}
-	
-	// ACK
-		private void commandACK(String line) throws IOException {
-			
-			String callId = UUID.randomUUID().toString();
-			
-			ACKMessage ACKMessage = new ACKMessage();	
-			
-			ACKMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
-			ACKMessage.setToName(userB);
-			ACKMessage.setToUri("sip:"+userB+"@SMA");
-			ACKMessage.setFromName(userA);
-			ACKMessage.setFromUri("sip:"+userA+"@SMA");
-			ACKMessage.setCallId(callId);
-			ACKMessage.setcSeqNumber("1");
-			ACKMessage.setcSeqStr("INVITE");
-			
-			String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-			if(ACKMessage.getToName().equalsIgnoreCase(userURIstring)) {
-				System.out.print(ACKMessage.toStringMessage());
-				if(state!=IDLE) {
-					prompt();
-				}
-				
-			}
-			
-			transactionLayer.callACK(ACKMessage);
-		}
 	
 	// BYE BYE
 	private void commandBye(String line) throws IOException {
@@ -732,6 +739,9 @@ public class UaUserLayer {
 			
 		}
 		
+		String messageType = byeMessage.toStringMessage();
+		showArrowInMessage(userB, userA, messageType);
+		
 		transactionLayer.callBye(byeMessage);
 	}
 	
@@ -754,6 +764,18 @@ public class UaUserLayer {
 		if (vitextServer != null) {
 			vitextServer.destroy();
 		}
+	}
+	
+	
+	/// METODOS AUXILIARES
+	private void showArrowInMessage(String from, String to, String messageType) { 
+		String commInfo = messageType.substring(0,messageType.indexOf(" "))
+				+ " " + from + " -> " + to;
+		String[] splittedMessage = messageType.split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: messageType);
+		System.out.println(commInfo);
+		System.out.println(messageToPrint + "\n");
 	}
 
 }

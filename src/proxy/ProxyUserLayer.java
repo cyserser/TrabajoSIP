@@ -51,6 +51,7 @@ public class ProxyUserLayer {
 	private String firstLine;
 	private String userA;
 	private String userB;
+	private String proxyName = "sip:proxy";
 	private boolean bIsConnected;
 
 	public ProxyUserLayer(int listenPort, String firstLine) throws SocketException {
@@ -61,19 +62,15 @@ public class ProxyUserLayer {
 
 	// RECIBO MENSAJE INVITE DEL LLAMANTE
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = inviteMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: inviteMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
-		
 		//REDUCIMOS EL MAXFORWARDS
 		inviteMessage.setMaxForwards(inviteMessage.getMaxForwards()-1);
 		
 		int whiteListSize = whiteList.getWhiteList().size();
 		userA=inviteMessage.getFromName();
 		userB=inviteMessage.getToName();
+		
+		String messageType = inviteMessage.toStringMessage();
+		showArrowInMessage(userA, userB, messageType);
 		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
@@ -87,7 +84,7 @@ public class ProxyUserLayer {
 			for(int i = 0; i < whiteListSize; i++)
 			{
 				if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getToName())) {
-					System.out.println(whiteList.getWhiteList().get(i).getUserPort());
+					//System.out.println(whiteList.getWhiteList().get(i).getUserPort());
 					String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
 					int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
 					
@@ -95,9 +92,11 @@ public class ProxyUserLayer {
 					if(destinationPort!=0)
 					{
 						// INVITAMOS AL LLAMADO
+						messageType = inviteMessage.toStringMessage();
+						showArrowInMessage(proxyName, userB, messageType);
 						transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
 						//bIsConnected = true;
-						System.out.println(inviteMessage.toStringMessage());
+						//System.out.println(inviteMessage.toStringMessage());
 						
 						// Informar al LLAMANTE de que se esta intentando
 						transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
@@ -121,7 +120,7 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getFromName())) {
 				stateA = CALLING;
-				System.out.println(inviteMessage.toStringMessage());
+				//System.out.println(inviteMessage.toStringMessage());
 			} 
 			else
 			{
@@ -132,15 +131,15 @@ public class ProxyUserLayer {
 			}
 		}
 		
-		System.out.println("\n");
-		System.out.println("Se quiere invitar a: " + inviteMessage.getToName());
-		System.out.println("El invite lo envio: " + inviteMessage.getFromName());
+		//System.out.println("\n");
+		//System.out.println("Se quiere invitar a: " + inviteMessage.getToName());
+		//System.out.println("El invite lo envio: " + inviteMessage.getFromName());
 		
 		//Comprobar si el LLAMADO
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getToName())) {
-				System.out.println(whiteList.getWhiteList().get(i).getUserPort());
+				//System.out.println(whiteList.getWhiteList().get(i).getUserPort());
 				String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
 				
@@ -149,8 +148,12 @@ public class ProxyUserLayer {
 				{
 					// INVITAMOS AL LLAMADO
 					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
+					
+					messageType = inviteMessage.toStringMessage();
+					showArrowInMessage(proxyName, userB, messageType);
+					
 					bIsConnected = true;
-					System.out.println(inviteMessage.toStringMessage());
+					//System.out.println(inviteMessage.toStringMessage());
 					
 					// Informar al LLAMANTE de que se esta intentando
 					transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
@@ -163,17 +166,13 @@ public class ProxyUserLayer {
 		
 		// Si el llamado no esta conectado/registrado
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage().toStringMessage());
+		//System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
 	// Se recibe el mensaje de register 
 	public void onRegisterReceived(RegisterMessage registerMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = registerMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: registerMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
+		String messageType = registerMessage.toStringMessage();
+		showArrowInMessage(registerMessage.getFromName(), proxyName, messageType);
 		
 		int whiteListSize = whiteList.getWhiteList().size();
 		
@@ -207,16 +206,14 @@ public class ProxyUserLayer {
 		}
 		
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage().toStringMessage());
+		//System.out.println(NotFoundMessage().toStringMessage());
+		
 	}
 	
+	// on Ringing received
 	public void onRingingReceived(RingingMessage ringingMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = ringingMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ringingMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
+		String messageType = ringingMessage.toStringMessage();
+		showArrowInMessage(ringingMessage.getToName(), proxyName, messageType);
 		
 		ArrayList<String> vias = ringingMessage.getVias();
 		String origin = vias.get(0);
@@ -240,17 +237,13 @@ public class ProxyUserLayer {
 			}
 		}
 		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage().toStringMessage());
+		//System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
 	// on OK received
 	public void onOKReceived(OKMessage okMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = okMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: okMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
+		String messageType = okMessage.toStringMessage();
+		showArrowInMessage(okMessage.getFromName(), okMessage.getToName(), messageType);
 		
 		ArrayList<String> vias = okMessage.getVias();
 		String origin = vias.get(0);
@@ -282,12 +275,8 @@ public class ProxyUserLayer {
 	
 	// on BUSY HERE RECEIVED del llamado
 	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = busyHereMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: busyHereMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
+		String messageType = busyHereMessage.toStringMessage();
+		showArrowInMessage(userB, proxyName, messageType);
 		
 		ArrayList<String> vias = busyHereMessage.getVias();
 		String origin = vias.get(0);
@@ -316,39 +305,35 @@ public class ProxyUserLayer {
 	}
 	
 	// on ACK received
-		public void onACKReceived(ACKMessage ACKMessage) throws IOException {
-			// Para mostrar el mensaje completo o solo la primera linea
-			String[] splittedMessage = ACKMessage.toStringMessage().split("\n", 2);
-			String messageToPrint;
-			messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ACKMessage.toStringMessage());
-			System.out.println(messageToPrint + "\n");
-			//
-			
-			ArrayList<String> vias = ACKMessage.getVias();
-			String origin = vias.get(0);
-			String[] originParts = origin.split(":");
-			String originAddress = originParts[0];
-			int originPort = Integer.parseInt(originParts[1]);
-			
-			//stateB = COMPLETED_B;
-					
-			//int whiteListSize = whiteList.getWhiteList().size();
-			
-			//Comprobar si el usuario esta en la lista
-			/*for(int i = 0; i < whiteListSize; i++)
-			{
-				if(getFromWhiteList(i).equals(ACKMessage.getFromName().toLowerCase())) {
-					originAddress = whiteList.getWhiteList().get(i).getUserAddress();
-					originPort = whiteList.getWhiteList().get(i).getUserPort();
-					transactionLayer.echoACK(ACKMessage, originAddress, originPort);
-					//System.out.println(busyHereMessage);
-					return;
-				}
-			}*/
-			
-			transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-			System.out.println(NotFoundMessage().toStringMessage());
-		}
+	public void onACKReceived(ACKMessage ACKMessage) throws IOException {
+		String messageType = ACKMessage.toStringMessage();
+		showArrowInMessage(userB, userA, messageType);
+		
+		ArrayList<String> vias = ACKMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		String originAddress = originParts[0];
+		int originPort = Integer.parseInt(originParts[1]);
+		
+		//stateB = COMPLETED_B;
+				
+		//int whiteListSize = whiteList.getWhiteList().size();
+		
+		//Comprobar si el usuario esta en la lista
+		/*for(int i = 0; i < whiteListSize; i++)
+		{
+			if(getFromWhiteList(i).equals(ACKMessage.getFromName().toLowerCase())) {
+				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
+				originPort = whiteList.getWhiteList().get(i).getUserPort();
+				transactionLayer.echoACK(ACKMessage, originAddress, originPort);
+				//System.out.println(busyHereMessage);
+				return;
+			}
+		}*/
+		
+		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+		//System.out.println(NotFoundMessage().toStringMessage());
+	}
 	
 		// on BYE RECEIVED del llamado
 		/*public void onByeMessageReceived(ByeMessage byeMessage) throws IOException {
@@ -387,11 +372,7 @@ public class ProxyUserLayer {
 			System.out.println(NotFoundMessage().toStringMessage());
 		}*/
 
-	private String getFromWhiteList(int i) {
-		String whiteListUser;
-		whiteListUser = whiteList.getWhiteList().get(i).getUserURI().substring(0, whiteList.getWhiteList().get(i).getUserURI().indexOf("@"));
-		return whiteListUser;
-	}
+	
 	
 	
 	//** MENSAJES PARA ENVIAR **//
@@ -420,12 +401,8 @@ public class ProxyUserLayer {
 		okMessage.setcSeqStr("INVITE");
 		okMessage.setContact(address + ":" + port);
 		
-		// Para mostrar el mensaje completo o solo la primera linea
-		String[] splittedMessage = okMessage.toStringMessage().split("\n", 2);
-		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: okMessage.toStringMessage());
-		System.out.println(messageToPrint + "\n");
-		//
+		String messageType = okMessage.toStringMessage();
+		showArrowInMessage(proxyName, okMessage.getToName(), messageType);
 
 		
 		return okMessage;
@@ -458,19 +435,10 @@ public class ProxyUserLayer {
 		notFoundMessage.setcSeqStr("INVITE");
 		notFoundMessage.setContact(address + ":" + port);
 		
-		int whiteListSize = whiteList.getWhiteList().size();
-		for(int i = 0; i < whiteListSize; i++)
-		{
-			if(getFromWhiteList(i).equals(notFoundMessage.getFromName().toLowerCase())) {
-				// Para mostrar el mensaje completo o solo la primera linea
-				String[] splittedMessage = notFoundMessage.toStringMessage().split("\n", 2);
-				String messageToPrint;
-				messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: notFoundMessage.toStringMessage());
-				System.out.println(messageToPrint + "\n");
-				//
-				
-			}
-		}
+		//int whiteListSize = whiteList.getWhiteList().size();
+		
+		String messageType = notFoundMessage.toStringMessage();
+		showArrowInMessage(userB, userA, messageType);
 		
 		return notFoundMessage;
 	}
@@ -502,18 +470,10 @@ public class ProxyUserLayer {
 		tryingMessage.setcSeqStr("INVITE");
 		tryingMessage.setContentLength(0);
 		
-		int whiteListSize = whiteList.getWhiteList().size();
-		for(int i = 0; i < whiteListSize; i++)
-		{
-			if(getFromWhiteList(i).equals(tryingMessage.getFromName().toLowerCase())) {
-				// Para mostrar el mensaje completo o solo la primera linea
-				String[] splittedMessage = tryingMessage.toStringMessage().split("\n", 2);
-				String messageToPrint;
-				messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: tryingMessage.toStringMessage());
-				System.out.println(messageToPrint + "\n");
-				//
-			}
-		}
+		//int whiteListSize = whiteList.getWhiteList().size();
+		
+		String messageType = tryingMessage.toStringMessage();
+		showArrowInMessage(proxyName, userA, messageType);
 
 		return tryingMessage;
 	}
@@ -545,70 +505,67 @@ public class ProxyUserLayer {
 		serviceUnavailableMessage.setcSeqStr("INVITE");
 		serviceUnavailableMessage.setContentLength(0);
 		
-		int whiteListSize = whiteList.getWhiteList().size();
-		for(int i = 0; i < whiteListSize; i++)
-		{
-			if(getFromWhiteList(i).equals(serviceUnavailableMessage.getFromName().toLowerCase())) {
-				// Para mostrar el mensaje completo o solo la primera linea
-				String[] splittedMessage = serviceUnavailableMessage.toStringMessage().split("\n", 2);
-				String messageToPrint;
-				messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: serviceUnavailableMessage.toStringMessage());
-				System.out.println(messageToPrint + "\n");
-				//
-					
-			}
-		}
+		String messageType = serviceUnavailableMessage.toStringMessage();
+		showArrowInMessage(proxyName, userA, messageType);
 
 		return serviceUnavailableMessage;
 	}
 	
 	// ACK
-		private ACKMessage ACKMessage() throws IOException {
-			
-			int port = 0;
-			String address = "";
-			for(int i = 0; i < whiteList.getWhiteList().size(); i++)
-			{
-				if(getFromWhiteList(i).equals(userA)) {
-					port = whiteList.getWhiteList().get(i).getUserPort();
-					address = whiteList.getWhiteList().get(i).getUserAddress();
-				}
+	private ACKMessage ACKMessage() throws IOException {
+		
+		int port = 0;
+		String address = "";
+		for(int i = 0; i < whiteList.getWhiteList().size(); i++)
+		{
+			if(getFromWhiteList(i).equals(userA)) {
+				port = whiteList.getWhiteList().get(i).getUserPort();
+				address = whiteList.getWhiteList().get(i).getUserAddress();
 			}
-			
-			String callId = UUID.randomUUID().toString();
-			
-			ACKMessage ACKMessage = new ACKMessage();	
-			
-			ACKMessage.setVias(new ArrayList<String>(Arrays.asList(address + ":" + port)));
-			ACKMessage.setToName(userB);
-			ACKMessage.setToUri("sip:"+userB+"@SMA");
-			ACKMessage.setFromName(userA);
-			ACKMessage.setFromUri("sip:"+userA+"@SMA");
-			ACKMessage.setCallId(callId);
-			ACKMessage.setcSeqNumber("1");
-			ACKMessage.setcSeqStr("INVITE");
-			ACKMessage.setMaxForwards(70);
-			ACKMessage.setContentLength(0);
-			
-			int whiteListSize = whiteList.getWhiteList().size();
-			for(int i = 0; i < whiteListSize; i++)
-			{
-				if(getFromWhiteList(i).equals(ACKMessage.getFromName().toLowerCase())) {
-					// Para mostrar el mensaje completo o solo la primera linea
-					String[] splittedMessage = ACKMessage.toStringMessage().split("\n", 2);
-					String messageToPrint;
-					messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: ACKMessage.toStringMessage());
-					System.out.println(messageToPrint + "\n");
-					//
-						
-				}
-			}
-
-			return ACKMessage;
 		}
+		
+		String callId = UUID.randomUUID().toString();
+		
+		ACKMessage ACKMessage = new ACKMessage();	
+		
+		ACKMessage.setVias(new ArrayList<String>(Arrays.asList(address + ":" + port)));
+		ACKMessage.setToName(userB);
+		ACKMessage.setToUri("sip:"+userB+"@SMA");
+		ACKMessage.setFromName(userA);
+		ACKMessage.setFromUri("sip:"+userA+"@SMA");
+		ACKMessage.setCallId(callId);
+		ACKMessage.setcSeqNumber("1");
+		ACKMessage.setcSeqStr("INVITE");
+		ACKMessage.setMaxForwards(70);
+		ACKMessage.setContentLength(0);
+		
+		String messageType = ACKMessage.toStringMessage();
+		showArrowInMessage(userA, userB, messageType);
+
+
+		return ACKMessage;
+	}
 
 	public void startListening() {
 		transactionLayer.startListening();
+	}
+	
+	/// METODOS AUXILIARES
+	
+	private String getFromWhiteList(int i) {
+		String whiteListUser;
+		whiteListUser = whiteList.getWhiteList().get(i).getUserURI().substring(0, whiteList.getWhiteList().get(i).getUserURI().indexOf("@"));
+		return whiteListUser;
+	}
+	
+	private void showArrowInMessage(String from, String to, String messageType) { 
+		String commInfo = messageType.substring(0,messageType.indexOf(" "))
+				+ " " + from + " -> " + to;
+		String[] splittedMessage = messageType.split("\n", 2);
+		String messageToPrint;
+		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: messageType);
+		System.out.println(commInfo);
+		System.out.println(messageToPrint + "\n");
 	}
 
 }
