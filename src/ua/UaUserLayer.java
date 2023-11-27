@@ -19,6 +19,7 @@ import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.TryingMessage;
+import proxy.ProxyWhiteListArray;
 import mensajesSIP.RingingMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ByeMessage;
@@ -79,7 +80,7 @@ public class UaUserLayer {
 		userB = inviteMessage.getToName();
 		
 		String messageType = inviteMessage.toStringMessage();
-		showArrowInMessage(userA, userB, messageType);
+		showArrowInMessage(proxyName, userB, messageType);
 		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
@@ -198,7 +199,7 @@ public class UaUserLayer {
 		
 		// Para mostrar el mensaje completo o solo la primera linea
 		String messageType = ringingMessage.toStringMessage();
-		showArrowInMessage(userFrom, userTo, messageType);
+		showArrowInMessage(proxyName, userA, messageType);
 		//
 		ArrayList<String> vias = ringingMessage.getVias();
 		String origin = vias.get(0);
@@ -587,7 +588,7 @@ public class UaUserLayer {
 		}
 		
 		String messageType = inviteMessage.toStringMessage();
-		showArrowInMessage(userURIString, nameToSend, messageType);
+		showArrowInMessage(userURIString, proxyName, messageType);
 		
 		this.state = CALLING;
 		
@@ -761,7 +762,7 @@ public class UaUserLayer {
 		}*/
 		
 		String messageType = busyHereMessage.toStringMessage();
-		showArrowInMessage(userB, proxyName, messageType);
+		showArrowInMessage(proxyName, userB, messageType);
 		
 		prompt();
 		
@@ -807,6 +808,27 @@ public class UaUserLayer {
 		
 		ByeMessage byeMessage = new ByeMessage();	
 		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		
+		System.out.println(userURIstring);
+		System.out.println(userA);
+		System.out.println(userB);
+		if(userURIstring.equals(userB)) {
+			userB = userA;
+			userA = userURIstring;
+			System.out.println(userA);
+			System.out.println(userB);
+		}
+		
+		
+		/*if(userURIstring == ) {
+			userA = "alice";
+			userB = "bob";
+		}
+		else if (listenPort == 9100) {
+			userA = "bob";
+			userB = "alice";
+		}*/
 		//String tempUserA = "";
 		//String tempUserB = "";
 		

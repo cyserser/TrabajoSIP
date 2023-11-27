@@ -78,7 +78,7 @@ public class ProxyUserLayer {
 		userB=inviteMessage.getToName();
 		
 		String messageType = inviteMessage.toStringMessage();
-		showArrowInMessage(userA, userB, messageType);
+		showArrowInMessage(userA, proxyName, messageType);
 		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
@@ -246,6 +246,7 @@ public class ProxyUserLayer {
 				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
 				// añadimos las vias
 				addViasMethod(ringingMessage);
+				showArrowInMessage(proxyName, ringingMessage.getFromName(), messageType);
 				transactionLayer.echoRinging(ringingMessage, destinationAddress, destinationPort);
 				//System.out.println(ringingMessage);
 				return;
@@ -258,7 +259,7 @@ public class ProxyUserLayer {
 	// on OK received
 	public void onOKReceived(OKMessage okMessage) throws IOException {
 		String messageType = okMessage.toStringMessage();
-		showArrowInMessage(okMessage.getFromName(), okMessage.getToName(), messageType);
+		showArrowInMessage(okMessage.getToName(),proxyName, messageType);
 		
 		ArrayList<String> vias = okMessage.getVias();
 		String origin = vias.get(0);
@@ -279,6 +280,7 @@ public class ProxyUserLayer {
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
 				// añadimos las vias
 				addViasMethod(okMessage);
+				showArrowInMessage(proxyName,okMessage.getFromName(), messageType);
 				transactionLayer.echoOK(okMessage, originAddress, originPort);
 				stateA = TERMINATED_A;
 				//System.out.println(okMessage);
