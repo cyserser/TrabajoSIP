@@ -15,6 +15,7 @@ import mensajesSIP.ACKMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.ByeMessage;
+import mensajesSIP.RequestTimeoutMessage;
 
 public class UaTransactionLayer {
 	/// MAL
@@ -111,6 +112,14 @@ public class UaTransactionLayer {
 			}
 			
 		}
+		// 406 timeout
+		else if (sipMessage instanceof RequestTimeoutMessage) {
+			RequestTimeoutMessage timeout = (RequestTimeoutMessage) sipMessage;
+			if(timeout != null)
+			{
+				userLayer.onRequestTimeoutReceived(timeout);
+			}
+		}
 		
 		// 486 busy
 		else if (sipMessage instanceof BusyHereMessage) {
@@ -184,14 +193,24 @@ public class UaTransactionLayer {
 		
 	}
 	
+	// 408 Time out
+	public void callTimeout(RequestTimeoutMessage timeoutMessage) throws IOException {
+		transportLayer.sendToProxy(timeoutMessage);
+	}
+	
 	// 486 Busy here (BOB)
 	public void callBusyHere(BusyHereMessage busyHereMessage) throws IOException {
 		transportLayer.sendToProxy(busyHereMessage);
 	}
 	
-	// ACK
+	// ACK UA
 	public void callACK(ACKMessage ACKMessage, String addressB, int portB) throws IOException {
 		transportLayer.send(ACKMessage, addressB, portB);
+	}
+	
+	// ACK Proxy
+	public void callACK(ACKMessage ACKMessage) throws IOException {
+		transportLayer.sendToProxy(ACKMessage);
 	}
 	
 	// BYE

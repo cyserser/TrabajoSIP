@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 
 import mensajesSIP.InviteMessage;
@@ -55,11 +57,19 @@ public class ProxyUserLayer {
 	private String proxyAddress;
 	private int proxyPort;
 	private boolean bIsConnected;
-
+	private boolean bOnACKReceived;
+	private Timer timer;
+	
 	public ProxyUserLayer(int listenPort, String firstLine) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
 		this.whiteList = new ProxyWhiteListArray();
 		this.firstLine = firstLine;
+		
+		// Singleton
+		if(timer == null)
+		{
+			timer = new Timer();
+		}
 	}
 	
 	// Setteamos las direccion y puerto del proxy
@@ -85,6 +95,22 @@ public class ProxyUserLayer {
 		String[] originParts = origin.split(":");
 		String originAddress = originParts[0];
 		int originPort = Integer.parseInt(originParts[1]);
+		
+		for(int i = 0; i < whiteListSize; i++)
+		{
+			if(inviteMessage.getFromName().equalsIgnoreCase(getFromWhiteList(i)))
+			{
+				// Si el usuario se desregistra con el campo expires...
+				if(whiteList.getWhiteList().get(i).getIsRegistered() == false)
+				{
+					System.err.println("usuario no REGISTRADO");
+					transactionLayer.echoNotfound(NotFoundMessage(false), originAddress, originPort);
+					return;
+				}
+			}
+		
+		}
+		
 		// PROXY ENCAMINA EL INVITE A LLAMADO SI ESTAN EN TERMINATED
 		if(stateA == TERMINATED_A && stateB == TERMINATED_B)
 		{
@@ -100,7 +126,6 @@ public class ProxyUserLayer {
 					{
 						// Informar al LLAMANTE de que se esta intentando
 						transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
-						//System.out.println(TryingMessage().toStringMessage());
 						
 						// INVITAMOS AL LLAMADO
 						messageType = inviteMessage.toStringMessage();
@@ -133,14 +158,8 @@ public class ProxyUserLayer {
 			{
 				//PASA EXPIRES
 				//MANDAR UN MENSAJE DE AUTOREGISTER PARA QUE EL UA SE VUELVE A REGISTRAR
-				//transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
-				//return;
 			}
 		}
-		
-		//System.out.println("\n");
-		//System.out.println("Se quiere invitar a: " + inviteMessage.getToName());
-		//System.out.println("El invite lo envio: " + inviteMessage.getFromName());
 		
 		//Comprobar si el LLAMADO
 		for(int i = 0; i < whiteListSize; i++)
@@ -176,8 +195,8 @@ public class ProxyUserLayer {
 		}
 		
 		// Si el llamado no esta conectado/registrado
-		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		//System.out.println(NotFoundMessage().toStringMessage());
+		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
+		//System.out.println(NotFoundMessage(true).toStringMessage());
 	}
 
 	
@@ -203,10 +222,14 @@ public class ProxyUserLayer {
 				
 				//System.out.println("Puerto origen: " + originPort );
 				// Guardamos su direccion y puerto
-				
+				whiteList.getWhiteList().get(i).setIsRegistered(true);
 				whiteList.getWhiteList().get(i).setUserAddress(originAddress);
 				whiteList.getWhiteList().get(i).setUserPort(originPort);
 				whiteList.getWhiteList().get(i).setUserName(registerMessage.getFromName());
+				int temp = Integer.parseInt(registerMessage.getExpires());
+				String userExpired = registerMessage.getFromName();
+				expiresCounter(temp,userExpired);
+				
 				/*this.originAddress = originAddress;
 				this.originPort = originPort;
 				this.userURI = registerMessage.getFromUri();
@@ -218,7 +241,7 @@ public class ProxyUserLayer {
 			}
 		}
 		
-		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
 		//System.out.println(NotFoundMessage().toStringMessage());
 		
 	}
@@ -252,7 +275,7 @@ public class ProxyUserLayer {
 				return;
 			}
 		}
-		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
+		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
 		//System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
@@ -288,8 +311,42 @@ public class ProxyUserLayer {
 			}
 		}
 		
-		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage().toString());
+		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
+		//System.out.println(NotFoundMessage().toString());
+	}
+	
+	// on Request Timeout
+	public void onRequestTimeoutReceived(RequestTimeoutMessage timeoutMessage) throws IOException {
+		String messageType = timeoutMessage.toStringMessage();
+		showArrowInMessage(userB, proxyName, messageType);
+		
+		ArrayList<String> vias = timeoutMessage.getVias();
+		String origin = vias.get(0);
+		String[] originParts = origin.split(":");
+		String originAddress = originParts[0];
+		int originPort = Integer.parseInt(originParts[1]);
+		
+		stateB = COMPLETED_B;
+				
+		int whiteListSize = whiteList.getWhiteList().size();
+		
+		//Comprobar si el usuario esta en la lista
+		for(int i = 0; i < whiteListSize; i++)
+		{
+			if(getFromWhiteList(i).equals(timeoutMessage.getFromName().toLowerCase())) {
+				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
+				originPort = whiteList.getWhiteList().get(i).getUserPort();
+				// añadimos las vias
+				addViasMethod(timeoutMessage);
+				messageType = timeoutMessage.toStringMessage();
+				showArrowInMessage(proxyName,timeoutMessage.getFromName(), messageType);
+				transactionLayer.echoTimeout(timeoutMessage, originAddress, originPort);
+				return;
+			}
+		}
+		
+		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
+		System.out.println(NotFoundMessage(true).toStringMessage());
 	}
 	
 	// on BUSY HERE RECEIVED del llamado
@@ -315,20 +372,24 @@ public class ProxyUserLayer {
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
 				// añadimos las vias
 				addViasMethod(busyHereMessage);
+				messageType = busyHereMessage.toStringMessage();
+				showArrowInMessage(proxyName, userA, messageType);
 				transactionLayer.echoBusyHere(busyHereMessage, originAddress, originPort);
+				// Iniciamos el temporizador
+				ACKTimer(busyHereMessage, originPort, originAddress);
 				//System.out.println(busyHereMessage);
 				return;
 			}
 		}
 		
-		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		System.out.println(NotFoundMessage().toStringMessage());
+		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
+		System.out.println(NotFoundMessage(true).toStringMessage());
 	}
 	
 	// on ACK received
 	public void onACKReceived(ACKMessage ACKMessage) throws IOException {
 		String messageType = ACKMessage.toStringMessage();
-		showArrowInMessage(userB, userA, messageType);
+		showArrowInMessage(userA, proxyName, messageType);
 		
 		ArrayList<String> vias = ACKMessage.getVias();
 		String origin = vias.get(0);
@@ -337,23 +398,31 @@ public class ProxyUserLayer {
 		int originPort = Integer.parseInt(originParts[1]);
 		
 		//stateB = COMPLETED_B;
+		
+		ACKTimer(ACKMessage, originPort, originAddress);
 				
-		//int whiteListSize = whiteList.getWhiteList().size();
+		int whiteListSize = whiteList.getWhiteList().size();
 		
 		//Comprobar si el usuario esta en la lista
-		/*for(int i = 0; i < whiteListSize; i++)
+		for(int i = 0; i < whiteListSize; i++)
 		{
-			if(getFromWhiteList(i).equals(ACKMessage.getFromName().toLowerCase())) {
+			if(getFromWhiteList(i).equals(ACKMessage.getToName().toLowerCase())) {
 				originAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				originPort = whiteList.getWhiteList().get(i).getUserPort();
-				transactionLayer.echoACK(ACKMessage, originAddress, originPort);
-				//System.out.println(busyHereMessage);
-				return;
+				if(originPort!=0)
+				{
+					messageType = ACKMessage.toStringMessage();
+					addViasMethod(ACKMessage);
+					showArrowInMessage(proxyName, userB, messageType);
+					transactionLayer.echoACK(ACKMessage, originAddress, originPort);
+					return;
+				}
+				
 			}
-		}*/
+		}
+		//transactionLayer.echoACK(ACKMessage, originAddress, originPort);
+		//transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
 		
-		transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
-		//System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
 		// on BYE RECEIVED del llamado
@@ -430,7 +499,7 @@ public class ProxyUserLayer {
 	}
 	
 	// 404 not found message
-	private NotFoundMessage NotFoundMessage() throws IOException {
+	private NotFoundMessage NotFoundMessage(boolean bRegister) throws IOException {
 		
 		int port = 0;
 		String address = "";
@@ -455,11 +524,18 @@ public class ProxyUserLayer {
 		notFoundMessage.setcSeqNumber("1");
 		notFoundMessage.setcSeqStr("INVITE");
 		notFoundMessage.setContact(address + ":" + port);
+		if(!bRegister)
+		{
+			notFoundMessage.setExpires("0");
+		}
 		
 		//int whiteListSize = whiteList.getWhiteList().size();
 		
 		String messageType = notFoundMessage.toStringMessage();
-		showArrowInMessage(userB, userA, messageType);
+		showArrowInMessage(proxyName, userA, messageType);
+		
+		// Iniciamos el temporizador
+		ACKTimer(notFoundMessage, port, address);
 		
 		return notFoundMessage;
 	}
@@ -532,14 +608,101 @@ public class ProxyUserLayer {
 		return serviceUnavailableMessage;
 	}
 	
+	// TEMPORIZADORES
+	private void ACKTimer(SIPMessage sipMessage, int destinationPort, String destinationAddress) {		
+		int time = 2;
+		int proxyPort = this.proxyPort;
+		int otherPort = destinationPort;
+		String otherAddress = destinationAddress;
+		
+		if(sipMessage instanceof BusyHereMessage)
+		{
+			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
+			
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			    	try {
+			    		if(counter != 0)
+			    		{
+			    			System.out.println(busyHereMessage.toStringMessage());
+			    			transactionLayer.echoBusyHere(busyHereMessage, otherAddress, otherPort);
+			    		}
+						
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+			       	counter=counter+time;
+			       	
+			    }
+			};
+			// Timer cada 200 ms
+			timer.scheduleAtFixedRate(task, 0, time*1000);
+			
+		}
+		else if(sipMessage instanceof RequestTimeoutMessage)
+		{
+			RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
+			
+		
+		}
+		else if(sipMessage instanceof NotFoundMessage)
+		{
+			NotFoundMessage notFoundMessage = (NotFoundMessage) sipMessage;
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			    	try {
+			    		if(counter != 0)
+			    		{
+			    			transactionLayer.echoNotfound(notFoundMessage, otherAddress, otherPort);
+			    		}
+						
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+			       	counter=counter+time;
+			       	
+			    }
+			};
+			// Timer cada 200 ms
+			timer.scheduleAtFixedRate(task, 0, time*100);
+			
+		}
+		else if(sipMessage instanceof ServiceUnavailableMessage)
+		{
+			ServiceUnavailableMessage notAvailable = (ServiceUnavailableMessage) sipMessage;
+		
+		}
+		else if(sipMessage instanceof ACKMessage)
+		{
+			timer.cancel();
+			System.out.println("\n Se ha recibido el ACK, paro el timer");
+		}
+		else
+		{
+			System.err.println("Error no se reconoce el mensaje...");
+		}
+		
+		
+		
+	}
+	
 	// ACK
 	private ACKMessage ACKMessage() throws IOException {
 		
+		System.out.println(userA);
 		int port = 0;
 		String address = "";
 		for(int i = 0; i < whiteList.getWhiteList().size(); i++)
 		{
-			if(getFromWhiteList(i).equals(userA)) {
+			if(getFromWhiteList(i).equals(userB)) {
 				port = whiteList.getWhiteList().get(i).getUserPort();
 				address = whiteList.getWhiteList().get(i).getUserAddress();
 			}
@@ -561,7 +724,7 @@ public class ProxyUserLayer {
 		ACKMessage.setContentLength(0);
 		
 		String messageType = ACKMessage.toStringMessage();
-		showArrowInMessage(userA, userB, messageType);
+		showArrowInMessage(proxyName, userB, messageType);
 
 
 		return ACKMessage;
@@ -587,6 +750,36 @@ public class ProxyUserLayer {
 		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: messageType);
 		System.out.println(commInfo);
 		System.out.println(messageToPrint + "\n");
+	}
+	
+	private void expiresCounter(int expiresTime, String expiredUser) {
+		Timer timer = new Timer();
+		TimerTask task = new TimerTask() {
+			int counter = expiresTime;
+		    @Override
+		    public void run() {
+		    	counter = counter - 1;
+		    	if(counter == 0)
+		    	{
+		    		System.err.println("user expired!");
+		    		int whiteListSize = whiteList.getWhiteList().size();
+		    		// Des-registrar al ususario
+		    		for(int i = 0; i < whiteListSize; i++)
+		    		{
+		    			if(getFromWhiteList(i).equals(expiredUser)) {
+		    				
+		    				whiteList.getWhiteList().get(i).setIsRegistered(false);
+		    				//whiteList.getWhiteList().get(i).setUserPort(0);
+		    				//whiteList.getWhiteList().get(i).setUserName(null);
+		    				
+		    				return;
+		    			}
+		    		}
+		    	}
+		    }
+		};
+		
+		timer.scheduleAtFixedRate(task, 0, 1000);
 	}
 	
 	// Metodo para añadir las vias generico para diferentes tipos de mensajes
@@ -638,6 +831,24 @@ public class ProxyUserLayer {
 				viaFinal.add(via1);
 				viaFinal.add(via2);
 				busyHereMessage.setVias(viaFinal);
+			}
+			else if(sipMessage instanceof RequestTimeoutMessage)
+			{
+				RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
+				via1 = String.join(", ", timeoutMessage.getVias());
+				via2 = this.proxyAddress+":"+this.proxyPort;
+				viaFinal.add(via1);
+				viaFinal.add(via2);
+				timeoutMessage.setVias(viaFinal);
+			}
+			else if(sipMessage instanceof ACKMessage)
+			{
+				ACKMessage ACKMessage = (ACKMessage) sipMessage;
+				via1 = String.join(", ", ACKMessage.getVias());
+				via2 = this.proxyAddress+":"+this.proxyPort;
+				viaFinal.add(via1);
+				viaFinal.add(via2);
+				ACKMessage.setVias(viaFinal);
 			}
 			else
 			{

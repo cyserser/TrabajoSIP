@@ -164,18 +164,34 @@ public class UaUserLayer {
 	
 	
 	// 404 NOT FOUND (usuario que no existe cuando lo introducimos por teclado)
+	// O cuando se nos expira el campo expires...
 	public void onNotFoundReceived(NotFoundMessage notFoundMessage) throws IOException {
 		this.Message = "NOT FOUND";
+		String algo = notFoundMessage.getExpires();
+		System.out.println(algo);
+		userA = notFoundMessage.getFromName();
+		userB = notFoundMessage.getToName();
+		
 		// Para mostrar el mensaje completo o solo la primera linea
 		String messageType = notFoundMessage.toStringMessage();
-		showArrowInMessage(userFrom, proxyName, messageType);
+		showArrowInMessage(proxyName,userFrom, messageType);
 		//
 		
+		commandACK();
+		
+		// si usuario ha expirado... nos volvemos a registrar
+		/*if(notFoundMessage.getExpires().equals("0"))
+		{
+			autoRegistering();
+			return;
+		}*/
+
 		state = COMPLETED_A;
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(notFoundMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			prompt();
-		}
+		}*/
 	
 		runVitextServer();
 	}
@@ -227,21 +243,39 @@ public class UaUserLayer {
 		}*/
 		
 		runVitextServer();
-		//ringingTimer();
+		
 	}
 	
-	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
-		this.Message = "BUSY";
-		String messageType = busyHereMessage.toStringMessage();
-		showArrowInMessage(userFrom, userTo, messageType);
-		//
+	// 406 Request Timeout
+	public void onRequestTimeoutReceived(RequestTimeoutMessage timeoutMessage) throws IOException {
+		String messageType = timeoutMessage.toStringMessage();
+		showArrowInMessage(proxyName, userFrom, messageType);
+		
+		// Enviamos un ACK al mensaje de error
+		commandACK();
 		
 		state = COMPLETED_A;
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+	
+		runVitextServer();
+	}
+	
+	// 486 Busy 
+	public void onBusyHereReceived(BusyHereMessage busyHereMessage) throws IOException {
+		this.Message = "BUSY";
+		String messageType = busyHereMessage.toStringMessage();
+		showArrowInMessage(proxyName, userFrom, messageType);
+		//
+		
+		// Enviamos un ACK al mensaje de error
+		//commandACK();
+		
+		state = COMPLETED_A;
+		
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(busyHereMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			//prompt();
-		}
+		}*/
 		
 		runVitextServer();
 	}
@@ -265,9 +299,8 @@ public class UaUserLayer {
 	
 	// ACK
 	public void onACKReceived(ACKMessage ACKMessage) throws IOException {
-		this.Message = "ACK";
 		String messageType = ACKMessage.toStringMessage();
-		showArrowInMessage(ACKMessage.getFromName(), ACKMessage.getToName(), messageType);
+		showArrowInMessage(proxyName, ACKMessage.getToName(), messageType);
 		
 		/*ACKMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" 
 				+ this.listenPort + ":" + puertoB)));
@@ -282,7 +315,13 @@ public class UaUserLayer {
 		if(ACKMessage.getFromName().equalsIgnoreCase(userURIstring)) {
 			prompt();
 		}*/
-		System.out.println("Type BYE to finish");
+		if(state == TERMINATED_B || state == TERMINATED_A)
+		{
+			messageType = ACKMessage.toStringMessage();
+			showArrowInMessage(ACKMessage.getFromName(), ACKMessage.getToName(), messageType);
+			System.out.println("Type BYE to finish");
+		}
+		
 		runVitextServer();
 	}
 	
@@ -394,30 +433,30 @@ public class UaUserLayer {
 			int counter=0;
 		    @Override
 		    public void run() {
-		        // Coloca la acción que deseas ejecutar aquí
-		        if (Message.equals("OK") || Message.equals("BUSY")) {
+		    	//System.err.println(Message.toString());
+		        if (Message.equals("s") || Message.equals("n")) {
+		        	//System.err.println("RINGING TIMER BUG");
 		       		timer.cancel();
 		       	}
-		       	else {
-		       		
-		       		counter=counter+time;
-		       	}
-		        if(counter>10) {
+		       	else if(counter>10) {
 		        	try {
-		        		System.out.println(commandTimeout("").toStringMessage());
+		        		//System.out.println(commandTimeout("").toStringMessage());
+		        		commandTimeout("");
 		        		timer.cancel();
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-		        }
+		        } else {
+		       		counter=counter+time;
+		       	}
 		    }
 		};
 
 		// Programar el Timer para que se ejecute cada 2 segundos
 		timer.scheduleAtFixedRate(task, 0, time*1000);
 	}
-	
+	// TODO: jacer el PUT OTIEMR OTRA VEZ
 	private void ACKTimer() {
 		Timer timer = new Timer();
 		System.out.println("ACK... ");
@@ -530,19 +569,15 @@ public class UaUserLayer {
 		} 
 		else if(line.startsWith("s"))
 		{
-			if(line.length()==1)
-			{
-				state = TERMINATED_B;
-				commandOK("");
-			}
+			this.Message = "s";
+			state = TERMINATED_B;
+			commandOK("");
 		}
 		
 		else if(line.startsWith("n"))
 		{
-			if(line.length()==1)
-			{
-				commandBusy("");
-			}
+			this.Message = "n";
+			commandBusy("");
 		}
 		else if(line.equalsIgnoreCase("BYE"))
 		{
@@ -649,7 +684,7 @@ public class UaUserLayer {
 	
 	}
 	
-	private RequestTimeoutMessage commandTimeout(String line) throws IOException {
+	private void commandTimeout(String line) throws IOException {
 		stopVitextServer();
 		stopVitextClient();
 		
@@ -670,16 +705,17 @@ public class UaUserLayer {
 		timeout.setContentLength(timeout.toStringMessage().getBytes().length);
 		
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
+		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(timeout.getToName().equalsIgnoreCase(userURIstring)) {
 			System.out.print(timeout.toStringMessage());
 			prompt();
-		}
+		}*/
 		
 		String messageType = timeout.toStringMessage();
-		showArrowInMessage(userA, proxyName, messageType);
+		showArrowInMessage(userB, proxyName, messageType);
 		
-		return timeout;
+		transactionLayer.callTimeout(timeout);
+		//return timeout;
 	}
 	
 	private void commandRinging(String line) throws IOException {
@@ -712,8 +748,9 @@ public class UaUserLayer {
 		showArrowInMessage(userB, proxyName, messageType);
 		
 		prompt();
-		
+	
 		transactionLayer.callRinging(ringingMessage);
+		ringingTimer();
 		
 	}
 	
@@ -793,7 +830,7 @@ public class UaUserLayer {
 		}*/
 		
 		String messageType = busyHereMessage.toStringMessage();
-		showArrowInMessage(proxyName, userB, messageType);
+		showArrowInMessage(userB, proxyName, messageType);
 		
 		prompt();
 		
@@ -830,6 +867,28 @@ public class UaUserLayer {
 		showArrowInMessage(userA, userB, messageType);
 		
 		transactionLayer.callACK(ACKMessage, this.myAddress, puertoB);
+	}
+	
+	// ACK PARA MENSAJES DE ERROR
+	private void commandACK() throws IOException {
+		
+		String callId = UUID.randomUUID().toString();
+	
+		ACKMessage ACKMessage = new ACKMessage();	
+		
+		ACKMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
+		ACKMessage.setToName(userB);
+		ACKMessage.setToUri("sip:"+userB+"@SMA");
+		ACKMessage.setFromName(userA);
+		ACKMessage.setFromUri("sip:"+userA+"@SMA");
+		ACKMessage.setCallId(callId);
+		ACKMessage.setcSeqNumber("1");
+		ACKMessage.setcSeqStr("INVITE");
+		ACKMessage.setDestination("sip:"+userA+"@SMA");
+		
+		String messageType = ACKMessage.toStringMessage();
+		showArrowInMessage(userA, proxyName, messageType);
+		transactionLayer.callACK(ACKMessage);
 	}
 	
 	// BYE BYE
