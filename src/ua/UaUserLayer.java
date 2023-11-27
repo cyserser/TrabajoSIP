@@ -132,12 +132,14 @@ public class UaUserLayer {
 			other = okMessage.getToName();
 		}*/
 		//
-		String messageType = okMessage.toStringMessage();
-		showArrowInMessage(proxyName, userURIString, messageType);
+		
 		//
 		
 		if(state == CALLING || state == PROCEEDING_A) {
 			state = TERMINATED_A;
+			
+			String messageType = okMessage.toStringMessage();
+			showArrowInMessage(proxyName, userURIString, messageType);
 			
 			//Se establece la llamada y comienza a enviarse ACK
 			commandACK(this.listenPort, puertoB);
@@ -145,6 +147,10 @@ public class UaUserLayer {
 			//ACKTimer();
 			//puertoB = okMessage.getVias();
 			
+		}
+		else if (state == TERMINATED_A) {
+			String messageType = okMessage.toStringMessage();
+			showArrowInMessage(userB, userURIString, messageType);
 		}
 		
 		if(okMessage.getFromName().equalsIgnoreCase(userURIString)) {
@@ -292,13 +298,20 @@ public class UaUserLayer {
 		int originPort = Integer.parseInt(originParts[1]);
 	
 		String messageType = byeMessage.toStringMessage();
+		
+		//OKMessage okMessage = new OKMessage();
+		
 		if(this.listenPort == originPort)
 		{
+			state = TERMINATED_A;
 			showArrowInMessage(byeMessage.getToName(), byeMessage.getFromName(), messageType);
+			commandOK("");
 		}
 		else
 		{
+			state = TERMINATED_A;
 			showArrowInMessage(byeMessage.getFromName(), byeMessage.getToName(), messageType);
+			commandOK("");
 		}
 	
 		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
@@ -519,6 +532,7 @@ public class UaUserLayer {
 		{
 			if(line.length()==1)
 			{
+				state = TERMINATED_B;
 				commandOK("");
 			}
 		}
@@ -707,10 +721,13 @@ public class UaUserLayer {
 	private void commandOK(String line) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
-		
-		state = TERMINATED_B;
-		
+		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		OKMessage okMessage = new OKMessage();	
+		
+		if(state == TERMINATED_A && userURIstring.equals(userA)) {
+			userA = userB;
+			userB = userURIstring;
+		}
 		
 		okMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
 		okMessage.setToName(userB);
@@ -722,18 +739,32 @@ public class UaUserLayer {
 		okMessage.setcSeqStr("INVITE");
 		okMessage.setContact(this.myAddress + ":" + this.listenPort);
 		
+		/*if(state == TERMINATED_A) {
+			userB = userA;
+			userA = userURIstring;
+		}*/
+		
 		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(okMessage.getToName().equalsIgnoreCase(userURIstring)) {
 			//System.out.print(okMessage.toStringMessage());
 			
 		}*/
 		
-		String messageType = okMessage.toStringMessage();
-		showArrowInMessage(userB, proxyName, messageType);
+		
 		
 		prompt();
 		
-		transactionLayer.callOK(okMessage);
+		if(state == TERMINATED_A) {
+			String messageType = okMessage.toStringMessage();
+			showArrowInMessage(userB, userA, messageType);
+			transactionLayer.callOK(okMessage, this.myAddress, puertoB);
+		}
+		else if (state == TERMINATED_B) {
+			String messageType = okMessage.toStringMessage();
+			showArrowInMessage(userB, proxyName, messageType);
+			transactionLayer.callOK(okMessage,"",0);
+		}
+		
 	}
 	
 	// 486 BUSY
@@ -810,14 +841,14 @@ public class UaUserLayer {
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		
-		System.out.println(userURIstring);
-		System.out.println(userA);
-		System.out.println(userB);
+		//System.out.println(userURIstring);
+		//System.out.println(userA);
+		//System.out.println(userB);
 		if(userURIstring.equals(userB)) {
 			userB = userA;
 			userA = userURIstring;
-			System.out.println(userA);
-			System.out.println(userB);
+			//System.out.println(userA);
+			//System.out.println(userB);
 		}
 		
 		

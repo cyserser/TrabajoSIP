@@ -85,7 +85,7 @@ public class UaTransactionLayer {
 				// LLAMANTE
 				if(state == CALLING || state == PROCEEDING_A) {
 					state = TERMINATED_A;
-				} 	
+				}
 			}	
 			userLayer.onOKReceived(okMessage);
 		}
@@ -137,7 +137,7 @@ public class UaTransactionLayer {
 			ACKMessage ACKMessage = (ACKMessage) sipMessage;
 			if(ACKMessage != null)
 			{
-				state = IDLE;
+				//state = IDLE;
 				userLayer.onACKReceived(ACKMessage);
 			}
 		}
@@ -174,8 +174,14 @@ public class UaTransactionLayer {
 	// MENSAJES QUE ENVIAMOS
 	
 	// 200 OK que enviamos (BOB)
-	public void callOK(OKMessage okMessage) throws IOException {
-		transportLayer.sendToProxy(okMessage);
+	public void callOK(OKMessage okMessage, String addressB, int portB) throws IOException {
+		if(state == IDLE) {
+			transportLayer.send(okMessage, addressB, portB);
+		}
+		else {
+			transportLayer.sendToProxy(okMessage);
+		}
+		
 	}
 	
 	// 486 Busy here (BOB)
