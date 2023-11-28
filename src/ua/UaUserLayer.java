@@ -17,6 +17,7 @@ import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SDPMessage;
+import mensajesSIP.SIPMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.TryingMessage;
 import proxy.ProxyWhiteListArray;
@@ -63,6 +64,8 @@ public class UaUserLayer {
 	private int puertoA; // llamante
 	private int puertoB; // llamado
 	private boolean isDisconnected = true;
+	private Timer ACKTimer;
+	//private boolean bProxyACK;
 
 	private Process vitextClient = null;
 	private Process vitextServer = null;
@@ -85,20 +88,13 @@ public class UaUserLayer {
 		String messageType = inviteMessage.toStringMessage();
 		showArrowInMessage(proxyName, userB, messageType);
 		
-		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
 		String[] originParts = origin.split(":");
 		
 		int originPort = Integer.parseInt(originParts[1]);
-		
 		puertoB = originPort;
 		
-		//System.out.println("El puerto del A es: " + listenPort);
-		//System.out.println("El puerto del B es: " + puertoB);
-		
-		//System.out.println(inviteMessage.toStringMessage());
-
 		if(state == TERMINATED_A)
 		{
 			commandBusy("");
@@ -107,42 +103,35 @@ public class UaUserLayer {
 		
 		state = PROCEEDING_B;
 		System.out.println("Estado: PROCEEDING");
-		runVitextServer();
 		
-		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(inviteMessage.getToName().equalsIgnoreCase(userURIstring)) {	
-		}*/
-	
 		commandRinging("");
 		System.out.println("Introduce an s to accept the call or deny with a n...");
 			
 		prompt();
-		
+		runVitextServer();
 	}
 	
 	// OK MESSAGE RECEIVED
 	public void onOKReceived(OKMessage okMessage) throws IOException {
 		this.Message = "OK";
 		
+		userA = okMessage.getFromName();
+		
 		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		String messageType = okMessage.toStringMessage();
-		showArrowInMessage(proxyName, userURIString, messageType);
 		
-		isDisconnected = false;
-		//String other = "";
-		// Para mostrar el mensaje completo o solo la primera linea
-		/*if(okMessage.getToName().equals(userURIString))
-		{
-			other = proxyName;
+		// Cuando el proxy ya no esta 
+		if (state == TERMINATED_B || state == TERMINATED_A) {
+			messageType = okMessage.toStringMessage();
+			showArrowInMessage(userB, userURIString, messageType);
+			System.out.println("Estado: IDLE");
 		}
 		else
 		{
-			other = okMessage.getToName();
-		}*/
-		//
+			showArrowInMessage(proxyName, userURIString, messageType);
+		}
 		
-		//
+		isDisconnected = false;
 		
 		if(state == CALLING || state == PROCEEDING_A) {
 			state = TERMINATED_A;
@@ -152,17 +141,12 @@ public class UaUserLayer {
 			System.out.println("Estado: TERMINATED");
 			
 			//Se establece la llamada y comienza a enviarse ACK
-			commandACK(this.listenPort, puertoB);
+			commandACK();
 			System.out.println("Type BYE to finish");
 			//ACKTimer();
 			//puertoB = okMessage.getVias();
-			
 		}
-		else if (state == TERMINATED_A) {
-			messageType = okMessage.toStringMessage();
-			showArrowInMessage(userB, userURIString, messageType);
-			System.out.println("Estado: IDLE");
-		}
+		
 		//else if (state == IDLE) {
 			//isDisconnected = false;
 		//}
@@ -170,8 +154,7 @@ public class UaUserLayer {
 		if(okMessage.getFromName().equalsIgnoreCase(userURIString)) {
 			prompt();
 		}
-		
-		
+
 		runVitextServer();
 	}
 
@@ -181,32 +164,19 @@ public class UaUserLayer {
 	// O cuando se nos expira el campo expires...
 	public void onNotFoundReceived(NotFoundMessage notFoundMessage) throws IOException {
 		this.Message = "NOT FOUND";
-		String algo = notFoundMessage.getExpires();
-		System.out.println(algo);
+
 		userA = notFoundMessage.getFromName();
 		userB = notFoundMessage.getToName();
 		
 		// Para mostrar el mensaje completo o solo la primera linea
 		String messageType = notFoundMessage.toStringMessage();
 		showArrowInMessage(proxyName,userFrom, messageType);
-		//
 		
+		// Enviamos confirmacion
 		commandACK();
 		
-		// si usuario ha expirado... nos volvemos a registrar
-		/*if(notFoundMessage.getExpires().equals("0"))
-		{
-			autoRegistering();
-			return;
-		}*/
-
 		state = COMPLETED_A;
 		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(notFoundMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			prompt();
-		}*/
-	
 		runVitextServer();
 	}
 	
@@ -246,17 +216,9 @@ public class UaUserLayer {
 		int originPort = Integer.parseInt(originParts[1]);
 		
 		puertoB = originPort;
-		
-		//System.out.println("El puerto del A es: " + listenPort);
-		//System.out.println("El puerto del B es: " + puertoB);
 				
 		state = PROCEEDING_A;
-		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(ringingMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			//prompt();
-		}*/
-		
+	
 		runVitextServer();
 		
 	}
@@ -320,19 +282,8 @@ public class UaUserLayer {
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(proxyName, ACKMessage.getToName(), messageType);
 		
-		/*ACKMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" 
-				+ this.listenPort + ":" + puertoB)));
-		
-		ArrayList<String> vias = ACKMessage.getVias();
-		String destination = vias.get(0);
-		String[] destinationParts = destination.split(":");
-
-		int destiantionPort = Integer.parseInt(destinationParts[2]);*/
-		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(ACKMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			prompt();
-		}*/
+		// Si nos llega un mensaje ACK paramos el timer especifico
+		//bProxyACK = true;
 		if(state == TERMINATED_B || state == TERMINATED_A)
 		{
 			messageType = ACKMessage.toStringMessage();
@@ -485,7 +436,7 @@ public class UaUserLayer {
 		timer.scheduleAtFixedRate(task, 0, time*1000);
 	}
 	// TODO: jacer el PUT OTIEMR OTRA VEZ
-	private void ACKTimer() {
+	/*private void ACKTimer() {
 		Timer timer = new Timer();
 		System.out.println("ACK... ");
 		int time = 2;
@@ -515,7 +466,7 @@ public class UaUserLayer {
 
 		// Programar el Timer para que se ejecute cada 2 segundos
 		timer.scheduleAtFixedRate(task, 0, time*1000);
-	}
+	}*/
 	
 	private void expiresCounter(int expiresTime, String expiredUser) {
 		Timer timer = new Timer();
@@ -659,10 +610,11 @@ public class UaUserLayer {
 		stopVitextServer();
 		stopVitextClient();
 		
+		// Si enviamos un invite sin estar registrado nos registramos y salimos
 		if(isDisconnected) {
 			autoRegistering();
+			return;
 		}
-		
 		
 		//System.out.println("Inviting...");
 		
@@ -677,6 +629,13 @@ public class UaUserLayer {
 		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		userFrom = userURIString;
 		//System.out.println("Sending to:" + nameToSend);
+		
+		if(userTo.equals(userURIString))
+		{
+			System.err.println("Error: no puedes llamar al mismo usuario");
+			promptIdle();
+			return;
+		}
 		
 		SDPMessage sdpMessage = new SDPMessage();
 		sdpMessage.setIp(this.myAddress);
@@ -829,6 +788,13 @@ public class UaUserLayer {
 	private void commandOK(String line) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
+		
+		// Si enviamos un invite sin estar registrado nos registramos y salimos
+		if(isDisconnected) {
+			autoRegistering();
+			return;
+		}
+		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		OKMessage okMessage = new OKMessage();	
 		
@@ -880,6 +846,12 @@ public class UaUserLayer {
 		
 		String callId = UUID.randomUUID().toString();
 		
+		// Si enviamos un invite sin estar registrado nos registramos y salimos
+		if(isDisconnected) {
+			autoRegistering();
+			return;
+		}
+		
 		BusyHereMessage busyHereMessage = new BusyHereMessage();	
 		
 		busyHereMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
@@ -891,19 +863,15 @@ public class UaUserLayer {
 		busyHereMessage.setcSeqNumber("1");
 		busyHereMessage.setcSeqStr("INVITE");
 		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(busyHereMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			//System.out.print(busyHereMessage.toStringMessage());
-			if(state!=IDLE) {
-				//prompt();
-			}
-			
-		}*/
-		
 		String messageType = busyHereMessage.toStringMessage();
 		showArrowInMessage(userB, proxyName, messageType);
 		
 		prompt();
+		
+		/**
+		 * DESCOMENTAR PARA PROBAR EL NO ACK...
+		 */
+		ACKTimer(busyHereMessage);
 		
 		transactionLayer.callBusyHere(busyHereMessage);
 	}
@@ -925,15 +893,6 @@ public class UaUserLayer {
 		ACKMessage.setcSeqStr("INVITE");
 		ACKMessage.setDestination("sip:"+userA+"@SMA");
 		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(ACKMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			System.out.print(ACKMessage.toStringMessage());
-			if(state!=IDLE) {
-				prompt();
-			}
-			
-		}*/
-		
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(userA, userB, messageType);
 		
@@ -944,7 +903,7 @@ public class UaUserLayer {
 	private void commandACK() throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
-	
+		
 		ACKMessage ACKMessage = new ACKMessage();	
 		
 		ACKMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
@@ -960,7 +919,7 @@ public class UaUserLayer {
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(userA, proxyName, messageType);
 		transactionLayer.callACK(ACKMessage);
-		state = IDLE;
+		//state = IDLE;
 		System.out.println("Estado: IDLE");
 	}
 	
@@ -968,7 +927,7 @@ public class UaUserLayer {
 	private void commandBye(String line) throws IOException {
 		
 		String callId = UUID.randomUUID().toString();
-		
+	
 		ByeMessage byeMessage = new ByeMessage();	
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
@@ -982,43 +941,6 @@ public class UaUserLayer {
 			//System.out.println(userA);
 			//System.out.println(userB);
 		}
-		
-		
-		/*if(userURIstring == ) {
-			userA = "alice";
-			userB = "bob";
-		}
-		else if (listenPort == 9100) {
-			userA = "bob";
-			userB = "alice";
-		}*/
-		//String tempUserA = "";
-		//String tempUserB = "";
-		
-		// Si 9100 == 
-		/*System.out.println("Puerto listen: " + this.listenPort);
-		System.out.println("PuertoB : " + puertoB);
-		System.out.println("User A : " + userA);
-		System.out.println("User B : " + userB);*/
-		
-		//tempUserA = userA; 
-		
-		//userA = userB;
-		
-		//userB = tempUserA;
-		//System.out.println("User A : " + userA);
-		//System.out.println("User B : " + userB);
-		
-		/*if(this.listenPort == puertoB)
-		{
-	
-		}*/
-		/*else
-		{
-			tempUserA = userA;
-			userA = userB;
-			userB = tempUserA;
-		}*/
 		
 		byeMessage.setDestination("sip:"+userB+"@SMA");
 		byeMessage.setVias(new ArrayList<String>(Arrays.asList(this.myAddress + ":" + this.listenPort)));
@@ -1035,6 +957,69 @@ public class UaUserLayer {
 		
 		transactionLayer.callBye(byeMessage, this.myAddress, puertoB);
 	}
+	
+	// TEMPORIZADORES
+	private void ACKTimer(SIPMessage sipMessage) {	
+		int time = 2;
+		
+		if(sipMessage instanceof BusyHereMessage)
+		{
+			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
+			ACKTimer = new Timer();
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			    	try {
+			    		/*if(bProxyACK)
+			    		{
+			    			timer.cancel();
+			    			timer.purge();
+			    			bProxyACK = false;
+		    				System.out.println("\n Se ha recibido el ACK, paro el timer");
+			    		}*/
+			    		
+			    		if(counter != 0)
+			    		{
+			    			String messageType = busyHereMessage.toStringMessage();
+			    			showArrowInMessage(proxyName, userA, messageType);
+			    			transactionLayer.callBusyHere(busyHereMessage);
+			    		}
+		
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			       	counter=counter+time;
+			    }
+			};
+			// Timer cada 200 ms
+			ACKTimer.scheduleAtFixedRate(task, 0, time*1000);
+		}
+		
+		else if(sipMessage instanceof RequestTimeoutMessage)
+		{
+			RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
+			
+		
+		}
+		else if(sipMessage instanceof ServiceUnavailableMessage )
+		{
+			ServiceUnavailableMessage notAvailable = (ServiceUnavailableMessage) sipMessage;
+		
+		}
+		else if(sipMessage instanceof ACKMessage)
+		{
+			
+		}
+		else
+		{
+			System.err.println("Error no se reconoce el mensaje...");
+		}
+			
+			
+			
+		}
 	
 
 	private void runVitextClient() throws IOException {

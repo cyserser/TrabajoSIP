@@ -7,15 +7,17 @@ public class ProxyWhiteList {
 	private String userAddress;
 	private String userName;
 	private boolean bIsRegistered;
+	private boolean bACKReceived;
 
 	public ProxyWhiteList(String userURI, String userAddress, int userPort, 
-			String userName, boolean bIsRegistered) {
+			String userName, boolean bIsRegistered, boolean bACKReceived) {
 		super();
 		this.userURI = userURI;
 		this.userAddress = userAddress;
 		this.userPort = userPort;
 		this.userName = userName;
 		this.setIsRegistered(bIsRegistered);
+		this.setbACKReceived(bACKReceived);
 	}
 	
 	public ProxyWhiteList(String userURI) {
@@ -60,6 +62,14 @@ public class ProxyWhiteList {
 
 	public void setIsRegistered(boolean bIsRegistered) {
 		this.bIsRegistered = bIsRegistered;
+	}
+
+	public boolean isbACKReceived() {
+		return bACKReceived;
+	}
+
+	public void setbACKReceived(boolean bACKReceived) {
+		this.bACKReceived = bACKReceived;
 	}
 
 }
