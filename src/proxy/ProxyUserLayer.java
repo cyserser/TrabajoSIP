@@ -88,7 +88,7 @@ public class ProxyUserLayer {
 		userB=inviteMessage.getToName();
 		
 		String messageType = inviteMessage.toStringMessage();
-		showArrowInMessage(userA, proxyName, messageType);
+		//showArrowInMessage(userA, proxyName, messageType);
 		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
@@ -152,6 +152,9 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getFromName())) {
 				stateA = CALLING;
+				showArrowInMessage(userA, proxyName, messageType);
+				System.out.println("Estado Llamante: CALLING");
+				System.out.println("Estado llamado: IDLE"+"\n");
 				//System.out.println(inviteMessage.toStringMessage());
 			} 
 			else
@@ -176,17 +179,20 @@ public class ProxyUserLayer {
 					
 					// añadimos las vias
 					addViasMethod(inviteMessage);
-					//System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH "+viaFinal);
 					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
 					
 					messageType = inviteMessage.toStringMessage();
 					showArrowInMessage(proxyName, userB, messageType);
+					System.out.println("Estado llamante: CALLING");
+					System.out.println("Estado Llamado: CALLING"+"\n");
 					
 					bIsConnected = true;
 					//System.out.println(inviteMessage.toStringMessage());
 					
 					// Informar al LLAMANTE de que se esta intentando
 					transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
+					System.out.println("Estado Llamante: PROCEEDING");
+					System.out.println("Estado llamado: CALLING"+"\n");
 					//System.out.println(TryingMessage().toStringMessage());
 					
 					return;
@@ -258,6 +264,8 @@ public class ProxyUserLayer {
 		int originPort = Integer.parseInt(originParts[1]);
 	
 		stateB = PROCEEDING_B;
+		System.out.println("Estado llamaante: PROCEEDING");
+		System.out.println("Estado llamado: PROCEEDING"+"\n");
 		
 		int whiteListSize = whiteList.getWhiteList().size();
 		
@@ -291,6 +299,8 @@ public class ProxyUserLayer {
 		int originPort = Integer.parseInt(originParts[1]);
 
 		stateB = TERMINATED_B;
+		System.out.println("Estado llamante: PROCEEDING");
+		System.out.println("Estado llamado: TERMINATED"+"\n");
 		
 		int whiteListSize = whiteList.getWhiteList().size();
 		
@@ -306,6 +316,8 @@ public class ProxyUserLayer {
 				showArrowInMessage(proxyName,okMessage.getFromName(), messageType);
 				transactionLayer.echoOK(okMessage, originAddress, originPort);
 				stateA = TERMINATED_A;
+				System.out.println("Estado llamante: TERMINATED");
+				System.out.println("Estado llamado: TERMINATED"+"\n");
 				//System.out.println(okMessage);
 				return;
 			}
@@ -361,6 +373,8 @@ public class ProxyUserLayer {
 		int originPort = Integer.parseInt(originParts[1]);
 		
 		stateB = COMPLETED_B;
+		System.out.println("Estado llamante: PROCEEDING");
+		System.out.println("Estado llamado: COMPLETED"+"\n");
 				
 		int whiteListSize = whiteList.getWhiteList().size();
 		
@@ -375,6 +389,8 @@ public class ProxyUserLayer {
 				messageType = busyHereMessage.toStringMessage();
 				showArrowInMessage(proxyName, userA, messageType);
 				transactionLayer.echoBusyHere(busyHereMessage, originAddress, originPort);
+				System.out.println("Estado llamante: COMPLETED");
+				System.out.println("Estado llamado: COMPLETED"+"\n");
 				// Iniciamos el temporizador
 				ACKTimer(busyHereMessage, originPort, originAddress);
 				//System.out.println(busyHereMessage);
@@ -761,13 +777,12 @@ public class ProxyUserLayer {
 		    	counter = counter - 1;
 		    	if(counter == 0)
 		    	{
-		    		System.err.println("user expired!");
+		    		//System.err.println("user expired!");
 		    		int whiteListSize = whiteList.getWhiteList().size();
 		    		// Des-registrar al ususario
 		    		for(int i = 0; i < whiteListSize; i++)
 		    		{
 		    			if(getFromWhiteList(i).equals(expiredUser)) {
-		    				
 		    				whiteList.getWhiteList().get(i).setIsRegistered(false);
 		    				//whiteList.getWhiteList().get(i).setUserPort(0);
 		    				//whiteList.getWhiteList().get(i).setUserName(null);

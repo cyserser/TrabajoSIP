@@ -39,6 +39,8 @@ public class UaUserLayer {
 	private static final int COMPLETED_B = 6;
 	private static final int TERMINATED_B = 7;
 	
+	private ProxyWhiteListArray whiteList;
+	
 	private int state = IDLE;
 	private String Message = "";
 	private String proxyName = "sip:proxy";
@@ -60,6 +62,7 @@ public class UaUserLayer {
 	private String expiresTime;
 	private int puertoA; // llamante
 	private int puertoB; // llamado
+	private boolean isDisconnected = true;
 
 	private Process vitextClient = null;
 	private Process vitextServer = null;
@@ -82,6 +85,7 @@ public class UaUserLayer {
 		String messageType = inviteMessage.toStringMessage();
 		showArrowInMessage(proxyName, userB, messageType);
 		
+		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
 		String[] originParts = origin.split(":");
@@ -90,8 +94,8 @@ public class UaUserLayer {
 		
 		puertoB = originPort;
 		
-		System.out.println("El puerto del A es: " + listenPort);
-		System.out.println("El puerto del B es: " + puertoB);
+		//System.out.println("El puerto del A es: " + listenPort);
+		//System.out.println("El puerto del B es: " + puertoB);
 		
 		//System.out.println(inviteMessage.toStringMessage());
 
@@ -102,6 +106,7 @@ public class UaUserLayer {
 		}
 		
 		state = PROCEEDING_B;
+		System.out.println("Estado: PROCEEDING");
 		runVitextServer();
 		
 		
@@ -121,6 +126,10 @@ public class UaUserLayer {
 		this.Message = "OK";
 		
 		String userURIString = userURI.substring(0, userURI.indexOf("@"));
+		String messageType = okMessage.toStringMessage();
+		showArrowInMessage(proxyName, userURIString, messageType);
+		
+		isDisconnected = false;
 		//String other = "";
 		// Para mostrar el mensaje completo o solo la primera linea
 		/*if(okMessage.getToName().equals(userURIString))
@@ -138,8 +147,9 @@ public class UaUserLayer {
 		if(state == CALLING || state == PROCEEDING_A) {
 			state = TERMINATED_A;
 			
-			String messageType = okMessage.toStringMessage();
+			messageType = okMessage.toStringMessage();
 			showArrowInMessage(proxyName, userURIString, messageType);
+			System.out.println("Estado: TERMINATED");
 			
 			//Se establece la llamada y comienza a enviarse ACK
 			commandACK(this.listenPort, puertoB);
@@ -149,9 +159,13 @@ public class UaUserLayer {
 			
 		}
 		else if (state == TERMINATED_A) {
-			String messageType = okMessage.toStringMessage();
+			messageType = okMessage.toStringMessage();
 			showArrowInMessage(userB, userURIString, messageType);
+			System.out.println("Estado: IDLE");
 		}
+		//else if (state == IDLE) {
+			//isDisconnected = false;
+		//}
 		
 		if(okMessage.getFromName().equalsIgnoreCase(userURIString)) {
 			prompt();
@@ -202,6 +216,7 @@ public class UaUserLayer {
 		// Para mostrar el mensaje completo o solo la primera linea
 		String messageType = tryingMessage.toStringMessage();
 		showArrowInMessage(proxyName, userFrom, messageType);
+		System.out.println("Estado: PROCEEDING");
 		//
 		
 		state = PROCEEDING_A;
@@ -232,8 +247,8 @@ public class UaUserLayer {
 		
 		puertoB = originPort;
 		
-		System.out.println("El puerto del A es: " + listenPort);
-		System.out.println("El puerto del B es: " + puertoB);
+		//System.out.println("El puerto del A es: " + listenPort);
+		//System.out.println("El puerto del B es: " + puertoB);
 				
 		state = PROCEEDING_A;
 		
@@ -251,10 +266,11 @@ public class UaUserLayer {
 		String messageType = timeoutMessage.toStringMessage();
 		showArrowInMessage(proxyName, userFrom, messageType);
 		
+		state = COMPLETED_A;
+		System.out.println("Estado: COMPLETED");
+		
 		// Enviamos un ACK al mensaje de error
 		commandACK();
-		
-		state = COMPLETED_A;
 		
 	
 		runVitextServer();
@@ -267,10 +283,11 @@ public class UaUserLayer {
 		showArrowInMessage(proxyName, userFrom, messageType);
 		//
 		
-		// Enviamos un ACK al mensaje de error
-		//commandACK();
-		
 		state = COMPLETED_A;
+		System.out.println("Estado: COMPLETED");
+		
+		// Enviamos un ACK al mensaje de error
+		commandACK();
 		
 		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(busyHereMessage.getFromName().equalsIgnoreCase(userURIstring)) {
@@ -288,6 +305,7 @@ public class UaUserLayer {
 		showArrowInMessage(proxyName, userTo, messageType);
 		
 		state = COMPLETED_A;
+		System.out.println("Estado: COMPLETED");
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(serviceUnavailableMessage.getFromName().equalsIgnoreCase(userURIstring)) {
@@ -345,12 +363,14 @@ public class UaUserLayer {
 			state = TERMINATED_A;
 			showArrowInMessage(byeMessage.getToName(), byeMessage.getFromName(), messageType);
 			commandOK("");
+			System.out.println("Estado: IDLE");
 		}
 		else
 		{
 			state = TERMINATED_A;
 			showArrowInMessage(byeMessage.getFromName(), byeMessage.getToName(), messageType);
 			commandOK("");
+			System.out.println("Estado: IDLE");
 		}
 	
 		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
@@ -397,12 +417,20 @@ public class UaUserLayer {
 		    public void run() {
 		        // Coloca la acción que deseas ejecutar aquí
 		        try {
-		        	if (Message.length()==0) {
-		        		commandRegister("", state);
+		        	//System.out.println(Message.length());
+		        	//if (Message.length()==0) {
+		        		//commandRegister("", state);
+		        		//isDisconnected = true;
 		        		//if(counter>=2) {
 		            		//System.out.println("El valor del temporizador es: " + counter +"s");
 		            	//}
 						//counter=counter+time;
+		        	//}
+		        	if (isDisconnected) {
+		        		commandRegister("", state);
+		        	}
+		        	else {
+		        		timer.cancel();
 		        	}
 		        	
 				} catch (IOException e) {
@@ -488,6 +516,39 @@ public class UaUserLayer {
 		// Programar el Timer para que se ejecute cada 2 segundos
 		timer.scheduleAtFixedRate(task, 0, time*1000);
 	}
+	
+	private void expiresCounter(int expiresTime, String expiredUser) {
+		Timer timer = new Timer();
+		TimerTask task = new TimerTask() {
+			int counter = expiresTime;
+			@Override
+			public void run() {
+				counter = counter - 1;
+				if(counter == 0)
+				{
+					isDisconnected = true;
+					System.out.println("user expired!");
+					timer.cancel();
+					
+					//DESREGISTRAMOS
+					
+					
+					//int whiteListSize = whiteList.getWhiteList().size();
+					// Des-registrar al ususario
+					//for(int i = 0; i < whiteListSize; i++)
+					//{
+						//if(getFromWhiteList(i).equals(expiredUser)) {
+	    	
+							//whiteList.getWhiteList().get(i).setIsRegistered(false);
+							//whiteList.getWhiteList().get(i).setUserPort(0);
+							//whiteList.getWhiteList().get(i).setUserName(null);
+	    				//return;
+	    			//}
+	    		}
+	    	}
+		};
+		timer.scheduleAtFixedRate(task, 0, 1000);
+	}
 
 	private void prompt() {
 		switch (state) {
@@ -567,16 +628,19 @@ public class UaUserLayer {
 			commandRegister(line, state);
 			
 		} 
-		else if(line.startsWith("s"))
+		else if(line.equals("s"))
 		{
 			this.Message = "s";
 			state = TERMINATED_B;
+			System.out.println("Estado: TERMINATED");
 			commandOK("");
 		}
 		
-		else if(line.startsWith("n"))
+		else if(line.equals("n"))
 		{
 			this.Message = "n";
+			state = COMPLETED_B;
+			System.out.println("Estado: COMPLETED");
 			commandBusy("");
 		}
 		else if(line.equalsIgnoreCase("BYE"))
@@ -594,6 +658,11 @@ public class UaUserLayer {
 	private void commandInvite(String line, int state) throws IOException {
 		stopVitextServer();
 		stopVitextClient();
+		
+		if(isDisconnected) {
+			autoRegistering();
+		}
+		
 		
 		//System.out.println("Inviting...");
 		
@@ -638,9 +707,8 @@ public class UaUserLayer {
 		
 		String messageType = inviteMessage.toStringMessage();
 		showArrowInMessage(userURIString, proxyName, messageType);
-		
 		this.state = CALLING;
-		
+		System.out.println("Estado: CALLING");
 		transactionLayer.call(inviteMessage);
 	}
 	
@@ -681,6 +749,9 @@ public class UaUserLayer {
 		//
 		
 		transactionLayer.callRegister(registerMessage);
+		
+		int tiempo = Integer.parseInt(expiresTime);
+		expiresCounter(tiempo,registerMessage.getFromName());
 	
 	}
 	
@@ -889,6 +960,8 @@ public class UaUserLayer {
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(userA, proxyName, messageType);
 		transactionLayer.callACK(ACKMessage);
+		state = IDLE;
+		System.out.println("Estado: IDLE");
 	}
 	
 	// BYE BYE
@@ -994,6 +1067,12 @@ public class UaUserLayer {
 		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: messageType);
 		System.out.println(commInfo);
 		System.out.println(messageToPrint + "\n");
+	}
+	
+	private String getFromWhiteList(int i) {
+		String whiteListUser;
+		whiteListUser = whiteList.getWhiteList().get(i).getUserURI().substring(0, whiteList.getWhiteList().get(i).getUserURI().indexOf("@"));
+		return whiteListUser;
 	}
 
 }
