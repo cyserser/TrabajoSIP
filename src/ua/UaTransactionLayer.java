@@ -15,12 +15,8 @@ import mensajesSIP.ACKMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.ByeMessage;
-import mensajesSIP.RequestTimeoutMessage;
 
 public class UaTransactionLayer {
-	/// MAL
-	private static final int REGISTERING = 1;
-	private static final int TRYING = 2;
 	
 	//Estados llamante
 	private static final int IDLE = 0;
@@ -31,8 +27,6 @@ public class UaTransactionLayer {
 	
 	//Estados llamado
 	private static final int PROCEEDING_B = 5;
-	private static final int COMPLETED_B = 6;
-	private static final int TERMINATED_B = 7;
 	
 	private int state;
 
@@ -55,17 +49,6 @@ public class UaTransactionLayer {
 				userLayer.onInviteReceived(inviteMessage);
 			}	
 		} 
-		/*else if (sipMessage instanceof RegisterMessage) {
-			RegisterMessage registerMessage = (RegisterMessage) sipMessage;
-			switch (state) {
-			case IDLE:
-				userLayer.onRegisterReceived(registerMessage);
-				break;
-			default:
-				System.err.println("Unexpected message, throwing away (REGISTER)");
-				break;
-			}
-		} */
 		
 		// 100 trying
 		else if (sipMessage instanceof TryingMessage) {

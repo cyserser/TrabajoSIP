@@ -17,25 +17,7 @@ import mensajesSIP.ByeMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 
 public class ProxyTransactionLayer {
-	//MAL
-	//private static final int REGISTERING = 1;
-	//private int state = REGISTERING;
 	
-	//Estados llamante
-	private static final int IDLE = 0;
-	private static final int CALLING = 1;
-	private static final int PROCEEDING_A = 2;
-	private static final int COMPLETED_A = 3;
-	private static final int TERMINATED_A = 4;
-	
-	//Estados llamado
-	private static final int PROCEEDING_B = 5;
-	private static final int COMPLETED_B = 6;
-	private static final int TERMINATED_B = 7;
-	
-	private int stateA;
-	private int stateB;
-
 	private ProxyUserLayer userLayer;
 	private ProxyTransportLayer transportLayer;
 
@@ -51,7 +33,6 @@ public class ProxyTransactionLayer {
 
 	public void onMessageReceived(SIPMessage sipMessage) throws IOException {
 		if (sipMessage instanceof InviteMessage) {
-			stateA = CALLING;
 			InviteMessage inviteMessage = (InviteMessage) sipMessage;
 			userLayer.onInviteReceived(inviteMessage);
 		}
@@ -63,12 +44,10 @@ public class ProxyTransactionLayer {
 		} 
 		else if (sipMessage instanceof RingingMessage) {
 			RingingMessage ringingMessage = (RingingMessage) sipMessage;
-			stateB = PROCEEDING_B;
 			userLayer.onRingingReceived(ringingMessage);
 		}
 		else if (sipMessage instanceof OKMessage) {
 			OKMessage okMessage = (OKMessage) sipMessage;
-			stateB = TERMINATED_B;
 			userLayer.onOKReceived(okMessage);
 		}
 		else if (sipMessage instanceof RequestTimeoutMessage) {
@@ -77,12 +56,10 @@ public class ProxyTransactionLayer {
 		}
 		else if (sipMessage instanceof BusyHereMessage) {
 			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
-			stateB = COMPLETED_B;
 			userLayer.onBusyHereReceived(busyHereMessage);;
 		}
 		else if (sipMessage instanceof ACKMessage) {
 			ACKMessage ACKMessage = (ACKMessage) sipMessage;
-			//stateA = COMPLETED_B;
 			userLayer.onACKReceived(ACKMessage);;
 		}
 		else {

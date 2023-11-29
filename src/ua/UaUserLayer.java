@@ -61,12 +61,9 @@ public class UaUserLayer {
 	private String userB;
 	private String firstLine;
 	private String expiresTime;
-	private int puertoA; // llamante
 	private int puertoB; // llamado
 	private boolean isDisconnected = true;
 	private boolean isACKReceived;
-	private Timer ACKTimer;
-	//private boolean bProxyACK;
 
 	private Process vitextClient = null;
 	private Process vitextServer = null;
@@ -117,24 +114,20 @@ public class UaUserLayer {
 		this.Message = "OK";
 		
 		userA = okMessage.getFromName();
+		userB = okMessage.getToName();
 		
 		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		String messageType = okMessage.toStringMessage();
-		
+
 		// Cuando el proxy ya no esta 
 		if (state == TERMINATED_B || state == TERMINATED_A) {
 			messageType = okMessage.toStringMessage();
 			showArrowInMessage(userB, userURIString, messageType);
 			System.out.println("Estado: IDLE");
+
+			state = IDLE;
 		}
-		else
-		{
-			showArrowInMessage(proxyName, userURIString, messageType);
-		}
-		
-		isDisconnected = false;
-		
-		if(state == CALLING || state == PROCEEDING_A) {
+		else if(state == CALLING || state == PROCEEDING_A) {
 			state = TERMINATED_A;
 			
 			messageType = okMessage.toStringMessage();
@@ -142,20 +135,17 @@ public class UaUserLayer {
 			System.out.println("Estado: TERMINATED");
 			
 			//Se establece la llamada y comienza a enviarse ACK
-			commandACK();
-			System.out.println("Type BYE to finish");
-			//ACKTimer();
-			//puertoB = okMessage.getVias();
+			commandACK(this.listenPort, puertoB);
+		}
+		else 
+		{
+			showArrowInMessage(proxyName, userURIString, messageType);
 		}
 		
-		//else if (state == IDLE) {
-			//isDisconnected = false;
-		//}
+		isDisconnected = false;
 		
-		if(okMessage.getFromName().equalsIgnoreCase(userURIString)) {
-			prompt();
-		}
-
+		prompt();
+		
 		runVitextServer();
 	}
 
@@ -212,7 +202,6 @@ public class UaUserLayer {
 		ArrayList<String> vias = ringingMessage.getVias();
 		String origin = vias.get(0);
 		String[] originParts = origin.split(":");
-		String originAddress = originParts[0];
 		
 		int originPort = Integer.parseInt(originParts[1]);
 		
@@ -235,7 +224,6 @@ public class UaUserLayer {
 		// Enviamos un ACK al mensaje de error
 		commandACK();
 		
-	
 		runVitextServer();
 	}
 	
@@ -244,7 +232,6 @@ public class UaUserLayer {
 		this.Message = "BUSY";
 		String messageType = busyHereMessage.toStringMessage();
 		showArrowInMessage(proxyName, userFrom, messageType);
-		//
 		
 		state = COMPLETED_A;
 		System.out.println("Estado: COMPLETED");
@@ -252,15 +239,10 @@ public class UaUserLayer {
 		// Enviamos un ACK al mensaje de error
 		commandACK();
 		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(busyHereMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			//prompt();
-		}*/
-		
 		runVitextServer();
 	}
 	
-	// 503 receving
+	// 503 Service unavailable
 	public void onServiceUnavailableReceived(ServiceUnavailableMessage serviceUnavailableMessage) throws IOException {
 		this.Message = "BUSY";
 		
@@ -288,8 +270,6 @@ public class UaUserLayer {
 		
 		isACKReceived = true;
 		
-		// Si nos llega un mensaje ACK paramos el timer especifico
-		//bProxyACK = true;
 		if(state == TERMINATED_B || state == TERMINATED_A)
 		{
 			messageType = ACKMessage.toStringMessage();
@@ -307,7 +287,6 @@ public class UaUserLayer {
 		ArrayList<String> vias = byeMessage.getVias();
 		String origin = vias.get(0);
 		String[] originParts = origin.split(":");
-		String originAddress = originParts[0];
 		
 		int originPort = Integer.parseInt(originParts[1]);
 	
@@ -329,17 +308,12 @@ public class UaUserLayer {
 			commandOK("");
 			System.out.println("Estado: IDLE");
 		}
+		state = IDLE;
 	
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(byeMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			prompt();
-		}*/
-		
 		runVitextServer();
 	}
 	
 	
-
 	public void startListeningNetwork() {
 		transactionLayer.startListeningNetwork();
 	}
@@ -365,190 +339,6 @@ public class UaUserLayer {
 		ourTimer();
 	}
 
-	private void ourTimer() {
-		Timer timer = new Timer();
-		int time = 2;
-		TimerTask task = new TimerTask() {
-			//int counter=0;
-		    @Override
-		    public void run() {
-		        // Coloca la acción que deseas ejecutar aquí
-		        try {
-		        	//System.out.println(Message.length());
-		        	//if (Message.length()==0) {
-		        		//commandRegister("", state);
-		        		//isDisconnected = true;
-		        		//if(counter>=2) {
-		            		//System.out.println("El valor del temporizador es: " + counter +"s");
-		            	//}
-						//counter=counter+time;
-		        	//}
-		        	if (isDisconnected) {
-		        		commandRegister("", state);
-		        	}
-		        	else {
-		        		timer.cancel();
-		        	}
-		        	
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-		        /*if(counter>10) {
-		        	try {
-		        		System.out.println(commandTimeout("").toStringMessage());
-		        		timer.cancel();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-		        }*/
-		    }
-		};
-
-		// Programar el Timer para que se ejecute cada 2 segundos
-		timer.scheduleAtFixedRate(task, 0, time*1000);
-	}
-	
-	private void ringingTimer() {
-		Timer timer = new Timer();
-		System.out.println("Ringing... ");
-		int time = 2;
-		TimerTask task = new TimerTask() {
-			int counter=0;
-		    @Override
-		    public void run() {
-		    	//System.err.println(Message.toString());
-		        if (Message.equals("s") || Message.equals("n")) {
-		        	//System.err.println("RINGING TIMER BUG");
-		       		timer.cancel();
-		       	}
-		       	else if(counter>10) {
-		        	try {
-		        		//System.out.println(commandTimeout("").toStringMessage());
-		        		commandTimeout("");
-		        		timer.cancel();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-		        } else {
-		       		counter=counter+time;
-		       	}
-		    }
-		};
-
-		// Programar el Timer para que se ejecute cada 2 segundos
-		timer.scheduleAtFixedRate(task, 0, time*1000);
-	}
-	// TODO: jacer el PUT OTIEMR OTRA VEZ
-	private void ACKTimer2(SIPMessage sipMessage) {
-		
-		if(sipMessage instanceof BusyHereMessage) {
-			
-			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
-			Timer timer = new Timer();
-			//System.out.println("ACK... ");
-			int time = 2;
-			//int myPort = this.listenPort;
-			//int otherPort = puertoB;
-			TimerTask task = new TimerTask() {
-				int counter=0;
-			    @Override
-			    public void run() {
-			        // Coloca la acción que deseas ejecutar aquí
-			    	try {
-			    		if(isACKReceived) {
-			    			timer.cancel();
-			    		}
-			    		else if(isACKReceived == false && counter != 0)
-			    		{
-			    			String messageType = busyHereMessage.toStringMessage();
-			    			showArrowInMessage(proxyName, userA , messageType);
-			    			transactionLayer.callBusyHere(busyHereMessage);
-			    		}
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-			       	counter=counter+time;
-			    }
-			};
-
-			// Programar el Timer para que se ejecute cada 2 segundos
-			timer.scheduleAtFixedRate(task, 0, time*1000);
-		}
-		
-		else if(sipMessage instanceof RequestTimeoutMessage) {
-			
-			RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
-			Timer timer = new Timer();
-			//System.out.println("ACK... ");
-			int time = 2;
-			//int myPort = this.listenPort;
-			//int otherPort = puertoB;
-			TimerTask task = new TimerTask() {
-				int counter=0;
-			    @Override
-			    public void run() {
-			        // Coloca la acción que deseas ejecutar aquí
-			    	try {
-			    		if(isACKReceived) {
-			    			timer.cancel();
-			    		}
-			    		else if(isACKReceived == false && counter != 0)
-			    		{
-			    			String messageType = timeoutMessage.toStringMessage();
-			    			showArrowInMessage(proxyName, userA , messageType);
-			    			transactionLayer.callTimeout(timeoutMessage);
-			    		}
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-			       	counter=counter+time;
-			    }
-			};
-
-			// Programar el Timer para que se ejecute cada 2 segundos
-			timer.scheduleAtFixedRate(task, 0, time*1000);
-		}
-		
-		
-	}
-	
-	private void expiresCounter(int expiresTime, String expiredUser) {
-		Timer timer = new Timer();
-		TimerTask task = new TimerTask() {
-			int counter = expiresTime;
-			@Override
-			public void run() {
-				counter = counter - 1;
-				if(counter == 0)
-				{
-					isDisconnected = true;
-					System.out.println("user expired!");
-					timer.cancel();
-					
-					//DESREGISTRAMOS
-					
-					
-					//int whiteListSize = whiteList.getWhiteList().size();
-					// Des-registrar al ususario
-					//for(int i = 0; i < whiteListSize; i++)
-					//{
-						//if(getFromWhiteList(i).equals(expiredUser)) {
-	    	
-							//whiteList.getWhiteList().get(i).setIsRegistered(false);
-							//whiteList.getWhiteList().get(i).setUserPort(0);
-							//whiteList.getWhiteList().get(i).setUserName(null);
-	    				//return;
-	    			//}
-	    		}
-	    	}
-		};
-		timer.scheduleAtFixedRate(task, 0, 1000);
-	}
 
 	private void prompt() {
 		switch (state) {
@@ -612,11 +402,13 @@ public class UaUserLayer {
 	private void promptTerminatedA() {
 		System.out.println(this.userURI);
 		System.out.println("Conexión establecida A");
+		System.out.println("Type BYE to finish");
 	}
 	
 	private void promptTerminatedB() {
 		System.out.println(this.userURI);
 		System.out.println("Conexión establecida B");
+		System.out.println("Type BYE to finish");
 	}
 	
 
@@ -634,6 +426,8 @@ public class UaUserLayer {
 			state = TERMINATED_B;
 			System.out.println("Estado: TERMINATED");
 			commandOK("");
+			prompt();
+			//state = IDLE;
 		}
 		
 		else if(line.equals("n"))
@@ -664,9 +458,7 @@ public class UaUserLayer {
 			autoRegistering();
 			return;
 		}
-		
-		//System.out.println("Inviting...");
-		
+	
 		runVitextClient();
 		String callId = UUID.randomUUID().toString();
 		
@@ -707,12 +499,6 @@ public class UaUserLayer {
 		inviteMessage.setContentLength(sdpMessage.toStringMessage().getBytes().length);
 		inviteMessage.setSdp(sdpMessage);
 		
-		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(inviteMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			//System.out.print(inviteMessage.toStringMessage());
-			//prompt();
-		}
-		
 		String messageType = inviteMessage.toStringMessage();
 		showArrowInMessage(userURIString, proxyName, messageType);
 		this.state = CALLING;
@@ -746,20 +532,16 @@ public class UaUserLayer {
 		registerMessage.setExpires(expiresTime);
 		registerMessage.setContentLength(registerMessage.toStringMessage().getBytes().length);
 		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(registerMessage.getFromName().equalsIgnoreCase(userURIstring)) {
-			
-			prompt();
-		}*/
 		// Para mostrar el mensaje completo o solo la primera linea
 		String messageType = registerMessage.toStringMessage();
 		showArrowInMessage(userURIString, proxyName, messageType);
 		//
 		
 		transactionLayer.callRegister(registerMessage);
-		
+	
 		int tiempo = Integer.parseInt(expiresTime);
 		expiresCounter(tiempo,registerMessage.getFromName());
+		
 	
 	}
 	
@@ -783,20 +565,12 @@ public class UaUserLayer {
 		timeout.setcSeqStr("REGISTER");
 		timeout.setContentLength(timeout.toStringMessage().getBytes().length);
 		
-		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(timeout.getToName().equalsIgnoreCase(userURIstring)) {
-			System.out.print(timeout.toStringMessage());
-			prompt();
-		}*/
-		
 		String messageType = timeout.toStringMessage();
 		showArrowInMessage(userB, proxyName, messageType);
 		
 		ACKTimer2(timeout);
 		
 		transactionLayer.callTimeout(timeout);
-		//return timeout;
 	}
 	
 	private void commandRinging(String line) throws IOException {
@@ -818,12 +592,6 @@ public class UaUserLayer {
 		ringingMessage.setcSeqNumber("1");
 		ringingMessage.setcSeqStr("REGISTER");
 		ringingMessage.setContentLength(ringingMessage.toStringMessage().getBytes().length);
-		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(ringingMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			//System.out.print(ringingMessage.toStringMessage());
-			//prompt();
-		}*/
 		
 		String messageType = ringingMessage.toStringMessage();
 		showArrowInMessage(userB, proxyName, messageType);
@@ -863,19 +631,6 @@ public class UaUserLayer {
 		okMessage.setcSeqNumber("1");
 		okMessage.setcSeqStr("INVITE");
 		okMessage.setContact(this.myAddress + ":" + this.listenPort);
-		
-		/*if(state == TERMINATED_A) {
-			userB = userA;
-			userA = userURIstring;
-		}*/
-		
-		/*String userURIstring = userURI.substring(0, userURI.indexOf("@"));
-		if(okMessage.getToName().equalsIgnoreCase(userURIstring)) {
-			//System.out.print(okMessage.toStringMessage());
-			
-		}*/
-		
-		
 		
 		prompt();
 		
@@ -980,14 +735,10 @@ public class UaUserLayer {
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		
-		//System.out.println(userURIstring);
-		//System.out.println(userA);
-		//System.out.println(userB);
+		
 		if(userURIstring.equals(userB)) {
 			userB = userA;
 			userA = userURIstring;
-			//System.out.println(userA);
-			//System.out.println(userB);
 		}
 		
 		byeMessage.setDestination("sip:"+userB+"@SMA");
@@ -1006,34 +757,87 @@ public class UaUserLayer {
 		transactionLayer.callBye(byeMessage, this.myAddress, puertoB);
 	}
 	
-	// TEMPORIZADORES
-	/*private void ACKTimer(SIPMessage sipMessage) {	
+	// Temporizadores
+	private void ourTimer() {
+		Timer timer = new Timer();
 		int time = 2;
+		TimerTask task = new TimerTask() {
+			//int counter=0;
+		    @Override
+		    public void run() {
+		        // Coloca la acción que deseas ejecutar aquí
+		        try {
+		        
+		        	if (isDisconnected) {
+		        		commandRegister("", state);
+		        	}
+		        	else {
+		        		timer.cancel();
+		        	}
+		        	
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		    }
+		};
+
+		timer.scheduleAtFixedRate(task, 0, time*1000);
+	}
+	
+	private void ringingTimer() {
+		Timer timer = new Timer();
+		System.out.println("Ringing... ");
+		int time = 2;
+		TimerTask task = new TimerTask() {
+			int counter=0;
+		    @Override
+		    public void run() {
+		    	//System.err.println(Message.toString());
+		        if (Message.equals("s") || Message.equals("n")) {
+		        	//System.err.println("RINGING TIMER BUG");
+		       		timer.cancel();
+		       	}
+		       	else if(counter>10) {
+		        	try {
+		        		//System.out.println(commandTimeout("").toStringMessage());
+		        		commandTimeout("");
+		        		timer.cancel();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+		        } else {
+		       		counter=counter+time;
+		       	}
+		    }
+		};
+
+		timer.scheduleAtFixedRate(task, 0, time*1000);
+	}
+	
+	private void ACKTimer2(SIPMessage sipMessage) {
 		
-		if(sipMessage instanceof BusyHereMessage)
-		{
+		if(sipMessage instanceof BusyHereMessage) {
+			
 			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
-			ACKTimer = new Timer();
+			Timer timer = new Timer();
+			int time = 2;
 			TimerTask task = new TimerTask() {
 				int counter=0;
 			    @Override
 			    public void run() {
 			    	try {
-			    		if(bProxyACK)
-			    		{
+			    		// Si recibimos el ACK cancelamos el timer
+			    		if(isACKReceived) {
 			    			timer.cancel();
-			    			timer.purge();
-			    			bProxyACK = false;
-		    				System.out.println("\n Se ha recibido el ACK, paro el timer");
 			    		}
-			    		
-			    		if(counter != 0)
+			    		else if(isACKReceived == false && counter != 0)
 			    		{
 			    			String messageType = busyHereMessage.toStringMessage();
-			    			showArrowInMessage(proxyName, userA, messageType);
+			    			showArrowInMessage(proxyName, userA , messageType);
 			    			transactionLayer.callBusyHere(busyHereMessage);
 			    		}
-		
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -1041,34 +845,58 @@ public class UaUserLayer {
 			       	counter=counter+time;
 			    }
 			};
-			// Timer cada 200 ms
-			ACKTimer.scheduleAtFixedRate(task, 0, time*1000);
+
+			timer.scheduleAtFixedRate(task, 0, time*1000);
 		}
 		
-		else if(sipMessage instanceof RequestTimeoutMessage)
-		{
+		else if(sipMessage instanceof RequestTimeoutMessage) {
 			RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
-			
-		
-		}
-		else if(sipMessage instanceof ServiceUnavailableMessage )
-		{
-			ServiceUnavailableMessage notAvailable = (ServiceUnavailableMessage) sipMessage;
-		
-		}
-		else if(sipMessage instanceof ACKMessage)
-		{
-			
-		}
-		else
-		{
-			System.err.println("Error no se reconoce el mensaje...");
-		}
-			
-			
-			
-		}*/
+			Timer timer = new Timer();
+			int time = 2;
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			        
+			    	try {
+			    		if(isACKReceived) {
+			    			timer.cancel();
+			    		}
+			    		else if(isACKReceived == false && counter != 0)
+			    		{
+			    			String messageType = timeoutMessage.toStringMessage();
+			    			showArrowInMessage(proxyName, userA , messageType);
+			    			transactionLayer.callTimeout(timeoutMessage);
+			    		}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			       	counter=counter+time;
+			    }
+			};
+
+			timer.scheduleAtFixedRate(task, 0, time*1000);
+		}	
+	}
 	
+	private void expiresCounter(int expiresTime, String expiredUser) {
+		Timer timer = new Timer();
+		TimerTask task = new TimerTask() {
+			int counter = expiresTime;
+			@Override
+			public void run() {
+				counter = counter - 1;
+				if(counter == 0)
+				{
+					isDisconnected = true;
+					System.out.println("user expired!");
+					timer.cancel();	
+	    		}
+	    	}
+		};
+		timer.scheduleAtFixedRate(task, 0, 1000);
+	}
 
 	private void runVitextClient() throws IOException {
 		//vitextClient = Runtime.getRuntime().exec("xterm -e vitext/vitextclient -p 5000 239.1.2.3");
@@ -1100,12 +928,6 @@ public class UaUserLayer {
 		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: messageType);
 		System.out.println(commInfo);
 		System.out.println(messageToPrint + "\n");
-	}
-	
-	private String getFromWhiteList(int i) {
-		String whiteListUser;
-		whiteListUser = whiteList.getWhiteList().get(i).getUserURI().substring(0, whiteList.getWhiteList().get(i).getUserURI().indexOf("@"));
-		return whiteListUser;
 	}
 
 }

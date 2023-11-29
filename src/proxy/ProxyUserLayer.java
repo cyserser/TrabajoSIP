@@ -13,14 +13,13 @@ import mensajesSIP.RegisterMessage;
 import mensajesSIP.RingingMessage;
 import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
-import mensajesSIP.SDPMessage;
 import mensajesSIP.SIPMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.ACKMessage;
-//import mensajesSIP.ByeMessage;
+
 
 public class ProxyUserLayer {
 	private ProxyTransactionLayer transactionLayer;
@@ -28,10 +27,8 @@ public class ProxyUserLayer {
 	private ProxyWhiteListArray whiteList;
 	
 	//Estados llamante
-	private static final int IDLE = 0;
 	private static final int CALLING = 1;
 	private static final int PROCEEDING_A = 2;
-	private static final int COMPLETED_A = 3;
 	private static final int TERMINATED_A = 4;
 	
 	//Estados llamado
@@ -42,37 +39,19 @@ public class ProxyUserLayer {
 	private int stateA;
 	private int stateB;
 	
-	//NO CASO ESTA MAL
-	private int originPort = 0;
-	private String originAddress = "";
-	private String userURI = "";
-	private String userName = "";
-	private String userURIB = "";
-	private String userNameB = "";
-	
 	private String firstLine;
 	private String userA;
 	private String userB;
 	private String proxyName = "sip:proxy";
 	private String proxyAddress;
 	private int proxyPort;
-	private boolean bIsConnected;
 	private boolean isACKReceived;
-	//private boolean bOnACKReceivedA;
-	//private boolean bOnACKReceivedB;
 	private Timer timer;
-	private Timer timerA;
-	private Timer timerB;
 	
 	public ProxyUserLayer(int listenPort, String firstLine) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
 		this.whiteList = new ProxyWhiteListArray();
 		this.firstLine = firstLine;
-			
-		/*if(timer == null)
-		{
-			timer = new Timer();
-		}*/
 	}
 	
 	// Setteamos las direccion y puerto del proxy
@@ -91,7 +70,6 @@ public class ProxyUserLayer {
 		userB=inviteMessage.getToName();
 		
 		String messageType = inviteMessage.toStringMessage();
-		//showArrowInMessage(userA, proxyName, messageType);
 		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
@@ -134,8 +112,6 @@ public class ProxyUserLayer {
 						messageType = inviteMessage.toStringMessage();
 						showArrowInMessage(proxyName, userB, messageType);
 						transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
-						//bIsConnected = true;
-						//System.out.println(inviteMessage.toStringMessage());
 						
 						return;
 					}
@@ -171,7 +147,6 @@ public class ProxyUserLayer {
 		for(int i = 0; i < whiteListSize; i++)
 		{
 			if(getFromWhiteList(i).equalsIgnoreCase(inviteMessage.getToName())) {
-				//System.out.println(whiteList.getWhiteList().get(i).getUserPort());
 				String destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
 				
@@ -189,15 +164,11 @@ public class ProxyUserLayer {
 					System.out.println("Estado llamante: CALLING");
 					System.out.println("Estado Llamado: CALLING"+"\n");
 					
-					bIsConnected = true;
-					//System.out.println(inviteMessage.toStringMessage());
-					
 					// Informar al LLAMANTE de que se esta intentando
 					transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
 					System.out.println("Estado Llamante: PROCEEDING");
 					System.out.println("Estado llamado: CALLING"+"\n");
-					//System.out.println(TryingMessage().toStringMessage());
-					
+	
 					return;
 				}
 			}
@@ -205,7 +176,6 @@ public class ProxyUserLayer {
 		
 		// Si el llamado no esta conectado/registrado
 		transactionLayer.echoNotfound(NotFoundMessage(false), originAddress, originPort);
-		//System.out.println(NotFoundMessage(true).toStringMessage());
 	}
 
 	
@@ -229,7 +199,6 @@ public class ProxyUserLayer {
 		{
 			if(getFromWhiteList(i).equals(registerMessage.getFromName())) {
 				
-				//System.out.println("Puerto origen: " + originPort );
 				// Guardamos su direccion y puerto
 				whiteList.getWhiteList().get(i).setIsRegistered(true);
 				whiteList.getWhiteList().get(i).setUserAddress(originAddress);
@@ -238,21 +207,13 @@ public class ProxyUserLayer {
 				int temp = Integer.parseInt(registerMessage.getExpires());
 				String userExpired = registerMessage.getFromName();
 				expiresCounter(temp,userExpired);
-				
-				/*this.originAddress = originAddress;
-				this.originPort = originPort;
-				this.userURI = registerMessage.getFromUri();
-				this.userName = registerMessage.getFromName();*/
-		
+			
 				transactionLayer.echoOK(OKMessage(whiteList.getWhiteList().get(i)), originAddress, originPort);
-				//System.out.println(OKMessage(whiteList.getWhiteList().get(i)).toStringMessage());
 				return;
 			}
 		}
 		
 		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
-		//System.out.println(NotFoundMessage().toStringMessage());
-		
 	}
 	
 	// on Ringing received
@@ -282,12 +243,10 @@ public class ProxyUserLayer {
 				addViasMethod(ringingMessage);
 				showArrowInMessage(proxyName, ringingMessage.getFromName(), messageType);
 				transactionLayer.echoRinging(ringingMessage, destinationAddress, destinationPort);
-				//System.out.println(ringingMessage);
 				return;
 			}
 		}
 		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
-		//System.out.println(NotFoundMessage().toStringMessage());
 	}
 	
 	// on OK received
@@ -321,13 +280,11 @@ public class ProxyUserLayer {
 				stateA = TERMINATED_A;
 				System.out.println("Estado llamante: TERMINATED");
 				System.out.println("Estado llamado: TERMINATED"+"\n");
-				//System.out.println(okMessage);
 				return;
 			}
 		}
 		
 		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
-		//System.out.println(NotFoundMessage().toString());
 	}
 	
 	// on Request Timeout
@@ -401,7 +358,6 @@ public class ProxyUserLayer {
 				System.out.println("Estado llamado: COMPLETED"+"\n");
 				// Iniciamos el temporizador
 				ACKTimer2(busyHereMessage, originPort, originAddress);
-				//System.out.println(busyHereMessage);
 				return;
 			}
 		}
@@ -414,17 +370,7 @@ public class ProxyUserLayer {
 	public void onACKReceived(ACKMessage ACKMessage) throws IOException {
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(userA, proxyName, messageType);
-		
-		ArrayList<String> vias = ACKMessage.getVias();
-		String origin = vias.get(0);
-		String[] originParts = origin.split(":");
-		String originAddress = originParts[0];
-		int originPort = Integer.parseInt(originParts[1]);
-		
-		//stateB = COMPLETED_B;
-		
-		//bOnACKReceivedA = true;
-		
+			
 		isACKReceived = true;
 		
 		if(timer != null)
@@ -432,35 +378,9 @@ public class ProxyUserLayer {
 			timer.cancel();
 			timer.purge();
 		}
-	
-		//ACKTimer(ACKMessage, originPort, originAddress);
-				
-		int whiteListSize = whiteList.getWhiteList().size();
-		
-		//Comprobar si el usuario esta en la lista
-		/*for(int i = 0; i < whiteListSize; i++)
-		{
-			if(ACKMessage.getToName()!=null) {
-				if(getFromWhiteList(i).equals(ACKMessage.getToName().toLowerCase())) {
-					originAddress = whiteList.getWhiteList().get(i).getUserAddress();
-					originPort = whiteList.getWhiteList().get(i).getUserPort();
-					if(originPort!=0)
-					{
-						messageType = ACKMessage.toStringMessage();
-						addViasMethod(ACKMessage);
-						showArrowInMessage(proxyName, userB, messageType);
-						transactionLayer.echoACK(ACKMessage, originAddress, originPort);
-						return;
-					}
-				}	
-			}
-			
-		}*/
-		//transactionLayer.echoACK(ACKMessage, originAddress, originPort);
-		//transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
 	}
 	
-	//** MENSAJES PARA ENVIAR **//
+	//************************* MENSAJES PARA ENVIAR ********************************//
 	
 	
 	// 200 OK message al llamante
@@ -524,8 +444,6 @@ public class ProxyUserLayer {
 			notFoundMessage.setExpires("0");
 		}
 		
-		//int whiteListSize = whiteList.getWhiteList().size();
-		
 		String messageType = notFoundMessage.toStringMessage();
 		showArrowInMessage(proxyName, userA, messageType);
 		
@@ -561,8 +479,6 @@ public class ProxyUserLayer {
 		tryingMessage.setcSeqNumber("1");
 		tryingMessage.setcSeqStr("INVITE");
 		tryingMessage.setContentLength(0);
-		
-		//int whiteListSize = whiteList.getWhiteList().size();
 		
 		String messageType = tryingMessage.toStringMessage();
 		showArrowInMessage(proxyName, userA, messageType);
@@ -608,7 +524,6 @@ public class ProxyUserLayer {
 	// TEMPORIZADORES
 	private void ACKTimer2(SIPMessage sipMessage, int destinationPort, String destinationAddress) {		
 		int time = 2;
-		int proxyPort = this.proxyPort;
 		int otherPort = destinationPort;
 		String otherAddress = destinationAddress;
 		
@@ -626,15 +541,6 @@ public class ProxyUserLayer {
 			    			timer.cancel();
 			    		}
 			    		
-			    		/*if(bOnACKReceivedA)
-			    		{
-			    			timer.cancel();
-			    			timer.purge();
-			    			bOnACKReceivedA = false;
-			    			//return;
-			    		}
-			    		
-			    		else*/
 			    		else if(isACKReceived == false && counter != 0)
 			    		{
 			    			String messageType = busyHereMessage.toStringMessage();
@@ -650,7 +556,7 @@ public class ProxyUserLayer {
 			    }
 			};
 			// Timer cada 200 ms
-			timer.scheduleAtFixedRate(task, 0, time*1000);
+			timer.scheduleAtFixedRate(task, 0, time*100);
 
 		}
 		else if(sipMessage instanceof RequestTimeoutMessage)
@@ -667,14 +573,6 @@ public class ProxyUserLayer {
 			    			timer.cancel();
 			    		}
 			    		
-			    		/*if(bOnACKReceivedA)
-			    		{
-			    			timer.cancel();
-			    			timer.purge();
-			    			bOnACKReceivedA = false;
-			    			//return;
-			    		}
-			    		else*/ 
 			    		else if(isACKReceived == false && counter != 0)
 			    		{
 			    			String messageType = timeoutMessage.toStringMessage();
@@ -706,14 +604,6 @@ public class ProxyUserLayer {
 			    			timer.cancel();
 			    		}
 			    		
-			    		/*if(bOnACKReceivedA)
-			    		{
-			    			timer.cancel();
-			    			timer.purge();
-			    			bOnACKReceivedA = false;
-			    			//return;
-			    		}
-			    		else*/ 
 			    		else if(isACKReceived == false && counter != 0)
 			    		{
 			    			String messageType = notFoundMessage.toStringMessage();
@@ -729,7 +619,7 @@ public class ProxyUserLayer {
 			    }
 			};
 			// Timer cada 200 ms
-			timer.scheduleAtFixedRate(task, 0, time*1000);	
+			timer.scheduleAtFixedRate(task, 0, time*100);	
 			
 		}
 		else if(sipMessage instanceof ServiceUnavailableMessage)
@@ -762,102 +652,7 @@ public class ProxyUserLayer {
 			    }
 			};
 			// Timer cada 200 ms
-			timer.scheduleAtFixedRate(task, 0, time*1000);
-		
-		}
-		else
-		{
-			System.err.println("Error no se reconoce el mensaje...");
-		}
-
-	}
-	
-	
-	private void ACKTimer(SIPMessage sipMessage, int destinationPort, String destinationAddress) {		
-		int time = 2;
-		int proxyPort = this.proxyPort;
-		int otherPort = destinationPort;
-		String otherAddress = destinationAddress;
-		
-		if(sipMessage instanceof BusyHereMessage)
-		{
-			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
-			/*Timer*/ timer = new Timer();
-			TimerTask task = new TimerTask() {
-				int counter=0;
-			    @Override
-			    public void run() {
-			    	try {
-			    		/*if(bOnACKReceivedA)
-			    		{
-			    			timer.cancel();
-			    			timer.purge();
-			    			bOnACKReceivedA = false;
-			    			//return;
-			    		}
-			    		
-			    		else*/
-			    		if(counter != 0)
-			    		{
-			    			String messageType = busyHereMessage.toStringMessage();
-			    			showArrowInMessage(proxyName, userA , messageType);
-			    			transactionLayer.echoBusyHere(busyHereMessage, otherAddress, otherPort);
-			    		}
-						
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-			       	counter=counter+time;
-			    }
-			};
-			// Timer cada 200 ms
-			timer.scheduleAtFixedRate(task, 0, time*1000);
-
-		}
-		else if(sipMessage instanceof RequestTimeoutMessage)
-		{
-			RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
-			
-		}
-		else if(sipMessage instanceof NotFoundMessage)
-		{
-			NotFoundMessage notFoundMessage = (NotFoundMessage) sipMessage;
-			/*Timer*/ timer = new Timer();
-			TimerTask task = new TimerTask() {
-				int counter=0;
-			    @Override
-			    public void run() {
-			    	try {
-			    		/*if(bOnACKReceivedA)
-			    		{
-			    			timer.cancel();
-			    			timer.purge();
-			    			bOnACKReceivedA = false;
-			    			//return;
-			    		}
-			    		else*/ 
-			    		if(counter != 0)
-			    		{
-			    			String messageType = notFoundMessage.toStringMessage();
-			    			showArrowInMessage(proxyName, userA , messageType);
-			    			transactionLayer.echoNotfound(notFoundMessage, otherAddress, otherPort);
-			    		}
-						
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-			       	counter=counter+time;				 
-			    }
-			};
-			// Timer cada 200 ms
-			timer.scheduleAtFixedRate(task, 0, time*1000);	
-			
-		}
-		else if(sipMessage instanceof ServiceUnavailableMessage)
-		{
-			ServiceUnavailableMessage notAvailable = (ServiceUnavailableMessage) sipMessage;
+			timer.scheduleAtFixedRate(task, 0, time*100);
 		
 		}
 		else
@@ -908,7 +703,7 @@ public class ProxyUserLayer {
 		transactionLayer.startListening();
 	}
 	
-	/// METODOS AUXILIARES
+	/// **************** METODOS AUXILIARES **********************************////
 	
 	private String getFromWhiteList(int i) {
 		String whiteListUser;
@@ -942,9 +737,6 @@ public class ProxyUserLayer {
 		    		{
 		    			if(getFromWhiteList(i).equals(expiredUser)) {
 		    				whiteList.getWhiteList().get(i).setIsRegistered(false);
-		    				//whiteList.getWhiteList().get(i).setUserPort(0);
-		    				//whiteList.getWhiteList().get(i).setUserName(null);
-		    				
 		    				return;
 		    			}
 		    		}
