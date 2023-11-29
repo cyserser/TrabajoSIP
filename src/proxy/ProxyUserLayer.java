@@ -57,6 +57,7 @@ public class ProxyUserLayer {
 	private String proxyAddress;
 	private int proxyPort;
 	private boolean bIsConnected;
+	private boolean isACKReceived;
 	//private boolean bOnACKReceivedA;
 	//private boolean bOnACKReceivedB;
 	private Timer timer;
@@ -203,7 +204,7 @@ public class ProxyUserLayer {
 		}
 		
 		// Si el llamado no esta conectado/registrado
-		transactionLayer.echoNotfound(NotFoundMessage(true), originAddress, originPort);
+		transactionLayer.echoNotfound(NotFoundMessage(false), originAddress, originPort);
 		//System.out.println(NotFoundMessage(true).toStringMessage());
 	}
 
@@ -341,7 +342,9 @@ public class ProxyUserLayer {
 		int originPort = Integer.parseInt(originParts[1]);
 		
 		stateB = COMPLETED_B;
-				
+		
+		transactionLayer.echoACK(ACKMessage(), originAddress, originPort);
+		
 		int whiteListSize = whiteList.getWhiteList().size();
 		
 		//Comprobar si el usuario esta en la lista
@@ -355,6 +358,7 @@ public class ProxyUserLayer {
 				messageType = timeoutMessage.toStringMessage();
 				showArrowInMessage(proxyName,timeoutMessage.getFromName(), messageType);
 				transactionLayer.echoTimeout(timeoutMessage, originAddress, originPort);
+				ACKTimer2(timeoutMessage, originPort, originAddress);
 				return;
 			}
 		}
@@ -378,6 +382,8 @@ public class ProxyUserLayer {
 		System.out.println("Estado llamante: PROCEEDING");
 		System.out.println("Estado llamado: COMPLETED"+"\n");
 				
+		transactionLayer.echoACK(ACKMessage(), originAddress, originPort);
+		
 		int whiteListSize = whiteList.getWhiteList().size();
 		
 		//Comprobar si el usuario esta en la lista
@@ -394,7 +400,7 @@ public class ProxyUserLayer {
 				System.out.println("Estado llamante: COMPLETED");
 				System.out.println("Estado llamado: COMPLETED"+"\n");
 				// Iniciamos el temporizador
-				ACKTimer(busyHereMessage, originPort, originAddress);
+				ACKTimer2(busyHereMessage, originPort, originAddress);
 				//System.out.println(busyHereMessage);
 				return;
 			}
@@ -418,6 +424,9 @@ public class ProxyUserLayer {
 		//stateB = COMPLETED_B;
 		
 		//bOnACKReceivedA = true;
+		
+		isACKReceived = true;
+		
 		if(timer != null)
 		{
 			timer.cancel();
@@ -429,7 +438,7 @@ public class ProxyUserLayer {
 		int whiteListSize = whiteList.getWhiteList().size();
 		
 		//Comprobar si el usuario esta en la lista
-		for(int i = 0; i < whiteListSize; i++)
+		/*for(int i = 0; i < whiteListSize; i++)
 		{
 			if(ACKMessage.getToName()!=null) {
 				if(getFromWhiteList(i).equals(ACKMessage.getToName().toLowerCase())) {
@@ -440,16 +449,13 @@ public class ProxyUserLayer {
 						messageType = ACKMessage.toStringMessage();
 						addViasMethod(ACKMessage);
 						showArrowInMessage(proxyName, userB, messageType);
-						/***
-						 * Descomentar esta linea para probar el re
-						 */
 						transactionLayer.echoACK(ACKMessage, originAddress, originPort);
 						return;
 					}
 				}	
 			}
 			
-		}
+		}*/
 		//transactionLayer.echoACK(ACKMessage, originAddress, originPort);
 		//transactionLayer.echoNotfound(NotFoundMessage(), originAddress, originPort);
 	}
@@ -524,7 +530,7 @@ public class ProxyUserLayer {
 		showArrowInMessage(proxyName, userA, messageType);
 		
 		// Iniciamos el temporizador
-		ACKTimer(notFoundMessage, port, address);
+		ACKTimer2(notFoundMessage, port, address);
 		
 		return notFoundMessage;
 	}
@@ -593,11 +599,180 @@ public class ProxyUserLayer {
 		
 		String messageType = serviceUnavailableMessage.toStringMessage();
 		showArrowInMessage(proxyName, userA, messageType);
+		
+		ACKTimer2(serviceUnavailableMessage, port, address);
 
 		return serviceUnavailableMessage;
 	}
 	
 	// TEMPORIZADORES
+	private void ACKTimer2(SIPMessage sipMessage, int destinationPort, String destinationAddress) {		
+		int time = 2;
+		int proxyPort = this.proxyPort;
+		int otherPort = destinationPort;
+		String otherAddress = destinationAddress;
+		
+		if(sipMessage instanceof BusyHereMessage)
+		{
+			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
+			/*Timer*/ timer = new Timer();
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			    	try {
+			    		
+			    		if(isACKReceived) {
+			    			timer.cancel();
+			    		}
+			    		
+			    		/*if(bOnACKReceivedA)
+			    		{
+			    			timer.cancel();
+			    			timer.purge();
+			    			bOnACKReceivedA = false;
+			    			//return;
+			    		}
+			    		
+			    		else*/
+			    		else if(isACKReceived == false && counter != 0)
+			    		{
+			    			String messageType = busyHereMessage.toStringMessage();
+			    			showArrowInMessage(proxyName, userA , messageType);
+			    			transactionLayer.echoBusyHere(busyHereMessage, otherAddress, otherPort);
+			    		}
+						
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			       	counter=counter+time;
+			    }
+			};
+			// Timer cada 200 ms
+			timer.scheduleAtFixedRate(task, 0, time*1000);
+
+		}
+		else if(sipMessage instanceof RequestTimeoutMessage)
+		{
+			RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
+			/*Timer*/ timer = new Timer();
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			    	try {
+			    		
+			    		if(isACKReceived) {
+			    			timer.cancel();
+			    		}
+			    		
+			    		/*if(bOnACKReceivedA)
+			    		{
+			    			timer.cancel();
+			    			timer.purge();
+			    			bOnACKReceivedA = false;
+			    			//return;
+			    		}
+			    		else*/ 
+			    		else if(isACKReceived == false && counter != 0)
+			    		{
+			    			String messageType = timeoutMessage.toStringMessage();
+			    			showArrowInMessage(proxyName, userA , messageType);
+			    			transactionLayer.echoTimeout(timeoutMessage, otherAddress, otherPort);
+			    		}
+						
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			       	counter=counter+time;				 
+			    }
+			};
+			// Timer cada 200 ms
+			timer.scheduleAtFixedRate(task, 0, time*1000);
+		}
+		else if(sipMessage instanceof NotFoundMessage)
+		{
+			NotFoundMessage notFoundMessage = (NotFoundMessage) sipMessage;
+			/*Timer*/ timer = new Timer();
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			    	try {
+			    		
+			    		if(isACKReceived) {
+			    			timer.cancel();
+			    		}
+			    		
+			    		/*if(bOnACKReceivedA)
+			    		{
+			    			timer.cancel();
+			    			timer.purge();
+			    			bOnACKReceivedA = false;
+			    			//return;
+			    		}
+			    		else*/ 
+			    		else if(isACKReceived == false && counter != 0)
+			    		{
+			    			String messageType = notFoundMessage.toStringMessage();
+			    			showArrowInMessage(proxyName, userA , messageType);
+			    			transactionLayer.echoNotfound(notFoundMessage, otherAddress, otherPort);
+			    		}
+						
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			       	counter=counter+time;				 
+			    }
+			};
+			// Timer cada 200 ms
+			timer.scheduleAtFixedRate(task, 0, time*1000);	
+			
+		}
+		else if(sipMessage instanceof ServiceUnavailableMessage)
+		{
+			ServiceUnavailableMessage notAvailable = (ServiceUnavailableMessage) sipMessage;
+			
+			timer = new Timer();
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			    	try {
+			    		
+			    		if(isACKReceived) {
+			    			timer.cancel();
+			    		}
+			    		
+			    		else if(isACKReceived == false && counter != 0)
+			    		{
+			    			String messageType = notAvailable.toStringMessage();
+			    			showArrowInMessage(proxyName, userA , messageType);
+			    			transactionLayer.echoServiceUnavailable(notAvailable, otherAddress, otherPort);
+			    		}
+						
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			       	counter=counter+time;
+			    }
+			};
+			// Timer cada 200 ms
+			timer.scheduleAtFixedRate(task, 0, time*1000);
+		
+		}
+		else
+		{
+			System.err.println("Error no se reconoce el mensaje...");
+		}
+
+	}
+	
+	
 	private void ACKTimer(SIPMessage sipMessage, int destinationPort, String destinationAddress) {		
 		int time = 2;
 		int proxyPort = this.proxyPort;
@@ -720,6 +895,7 @@ public class ProxyUserLayer {
 		ACKMessage.setcSeqStr("INVITE");
 		ACKMessage.setMaxForwards(70);
 		ACKMessage.setContentLength(0);
+		ACKMessage.setDestination("sip:"+userB+"@SMA");
 		
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(proxyName, userB, messageType);

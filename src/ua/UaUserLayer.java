@@ -64,6 +64,7 @@ public class UaUserLayer {
 	private int puertoA; // llamante
 	private int puertoB; // llamado
 	private boolean isDisconnected = true;
+	private boolean isACKReceived;
 	private Timer ACKTimer;
 	//private boolean bProxyACK;
 
@@ -274,6 +275,9 @@ public class UaUserLayer {
 			prompt();
 		}
 		
+		// Enviamos confirmacion
+		commandACK();
+				
 		runVitextServer();
 	}
 	
@@ -281,6 +285,8 @@ public class UaUserLayer {
 	public void onACKReceived(ACKMessage ACKMessage) throws IOException {
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(proxyName, ACKMessage.getToName(), messageType);
+		
+		isACKReceived = true;
 		
 		// Si nos llega un mensaje ACK paramos el timer especifico
 		//bProxyACK = true;
@@ -436,37 +442,80 @@ public class UaUserLayer {
 		timer.scheduleAtFixedRate(task, 0, time*1000);
 	}
 	// TODO: jacer el PUT OTIEMR OTRA VEZ
-	/*private void ACKTimer() {
-		Timer timer = new Timer();
-		System.out.println("ACK... ");
-		int time = 2;
-		int myPort = this.listenPort;
-		int otherPort = puertoB;
-		TimerTask task = new TimerTask() {
-			int counter=0;
-		    @Override
-		    public void run() {
-		        // Coloca la acción que deseas ejecutar aquí
-		    	try {
-					commandACK(myPort,otherPort);
-					System.out.println("Type BYE to finish");
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-		        if (Message.equals("BYE")) {
-		       		timer.cancel();
-		       	}
-		       	else {
-		       		
-		       		counter=counter+time;
-		       	}
-		    }
-		};
+	private void ACKTimer2(SIPMessage sipMessage) {
+		
+		if(sipMessage instanceof BusyHereMessage) {
+			
+			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
+			Timer timer = new Timer();
+			//System.out.println("ACK... ");
+			int time = 2;
+			//int myPort = this.listenPort;
+			//int otherPort = puertoB;
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			        // Coloca la acción que deseas ejecutar aquí
+			    	try {
+			    		if(isACKReceived) {
+			    			timer.cancel();
+			    		}
+			    		else if(isACKReceived == false && counter != 0)
+			    		{
+			    			String messageType = busyHereMessage.toStringMessage();
+			    			showArrowInMessage(proxyName, userA , messageType);
+			    			transactionLayer.callBusyHere(busyHereMessage);
+			    		}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			       	counter=counter+time;
+			    }
+			};
 
-		// Programar el Timer para que se ejecute cada 2 segundos
-		timer.scheduleAtFixedRate(task, 0, time*1000);
-	}*/
+			// Programar el Timer para que se ejecute cada 2 segundos
+			timer.scheduleAtFixedRate(task, 0, time*1000);
+		}
+		
+		else if(sipMessage instanceof RequestTimeoutMessage) {
+			
+			RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
+			Timer timer = new Timer();
+			//System.out.println("ACK... ");
+			int time = 2;
+			//int myPort = this.listenPort;
+			//int otherPort = puertoB;
+			TimerTask task = new TimerTask() {
+				int counter=0;
+			    @Override
+			    public void run() {
+			        // Coloca la acción que deseas ejecutar aquí
+			    	try {
+			    		if(isACKReceived) {
+			    			timer.cancel();
+			    		}
+			    		else if(isACKReceived == false && counter != 0)
+			    		{
+			    			String messageType = timeoutMessage.toStringMessage();
+			    			showArrowInMessage(proxyName, userA , messageType);
+			    			transactionLayer.callTimeout(timeoutMessage);
+			    		}
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+			       	counter=counter+time;
+			    }
+			};
+
+			// Programar el Timer para que se ejecute cada 2 segundos
+			timer.scheduleAtFixedRate(task, 0, time*1000);
+		}
+		
+		
+	}
 	
 	private void expiresCounter(int expiresTime, String expiredUser) {
 		Timer timer = new Timer();
@@ -744,6 +793,8 @@ public class UaUserLayer {
 		String messageType = timeout.toStringMessage();
 		showArrowInMessage(userB, proxyName, messageType);
 		
+		ACKTimer2(timeout);
+		
 		transactionLayer.callTimeout(timeout);
 		//return timeout;
 	}
@@ -868,10 +919,7 @@ public class UaUserLayer {
 		
 		prompt();
 		
-		/**
-		 * DESCOMENTAR PARA PROBAR EL NO ACK...
-		 */
-		ACKTimer(busyHereMessage);
+		ACKTimer2(busyHereMessage);
 		
 		transactionLayer.callBusyHere(busyHereMessage);
 	}
@@ -959,7 +1007,7 @@ public class UaUserLayer {
 	}
 	
 	// TEMPORIZADORES
-	private void ACKTimer(SIPMessage sipMessage) {	
+	/*private void ACKTimer(SIPMessage sipMessage) {	
 		int time = 2;
 		
 		if(sipMessage instanceof BusyHereMessage)
@@ -971,13 +1019,13 @@ public class UaUserLayer {
 			    @Override
 			    public void run() {
 			    	try {
-			    		/*if(bProxyACK)
+			    		if(bProxyACK)
 			    		{
 			    			timer.cancel();
 			    			timer.purge();
 			    			bProxyACK = false;
 		    				System.out.println("\n Se ha recibido el ACK, paro el timer");
-			    		}*/
+			    		}
 			    		
 			    		if(counter != 0)
 			    		{
@@ -1019,7 +1067,7 @@ public class UaUserLayer {
 			
 			
 			
-		}
+		}*/
 	
 
 	private void runVitextClient() throws IOException {
