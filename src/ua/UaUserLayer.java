@@ -93,14 +93,14 @@ public class UaUserLayer {
 		int originPort = Integer.parseInt(originParts[1]);
 		puertoB = originPort;
 		
-		if(state == TERMINATED_A)
+		if(state == TERMINATED_A || state == TERMINATED_B)
 		{
 			commandBusy("");
 			return;
 		}
 		
 		state = PROCEEDING_B;
-		System.out.println("Estado: PROCEEDING");
+		System.out.println("Estado: PROCEEDING"+"\n");
 		
 		commandRinging("");
 		System.out.println("Introduce an s to accept the call or deny with a n...");
@@ -123,7 +123,7 @@ public class UaUserLayer {
 		if (state == TERMINATED_B || state == TERMINATED_A) {
 			messageType = okMessage.toStringMessage();
 			showArrowInMessage(userB, userURIString, messageType);
-			System.out.println("Estado: IDLE");
+			System.out.println("Estado: IDLE"+"\n");
 
 			state = IDLE;
 		}
@@ -132,7 +132,7 @@ public class UaUserLayer {
 			
 			messageType = okMessage.toStringMessage();
 			showArrowInMessage(proxyName, userURIString, messageType);
-			System.out.println("Estado: TERMINATED");
+			System.out.println("Estado: TERMINATED"+"\n");
 			
 			//Se establece la llamada y comienza a enviarse ACK
 			commandACK(this.listenPort, puertoB);
@@ -167,6 +167,7 @@ public class UaUserLayer {
 		commandACK();
 		
 		state = COMPLETED_A;
+		System.out.println("Estado: COMPLETED"+"\n");
 		
 		runVitextServer();
 	}
@@ -177,7 +178,7 @@ public class UaUserLayer {
 		// Para mostrar el mensaje completo o solo la primera linea
 		String messageType = tryingMessage.toStringMessage();
 		showArrowInMessage(proxyName, userFrom, messageType);
-		System.out.println("Estado: PROCEEDING");
+		System.out.println("Estado: PROCEEDING"+"\n");
 		//
 		
 		state = PROCEEDING_A;
@@ -219,7 +220,7 @@ public class UaUserLayer {
 		showArrowInMessage(proxyName, userFrom, messageType);
 		
 		state = COMPLETED_A;
-		System.out.println("Estado: COMPLETED");
+		System.out.println("Estado: COMPLETED"+"\n");
 		
 		// Enviamos un ACK al mensaje de error
 		commandACK();
@@ -234,7 +235,7 @@ public class UaUserLayer {
 		showArrowInMessage(proxyName, userFrom, messageType);
 		
 		state = COMPLETED_A;
-		System.out.println("Estado: COMPLETED");
+		System.out.println("Estado: COMPLETED"+"\n");
 		
 		// Enviamos un ACK al mensaje de error
 		commandACK();
@@ -250,7 +251,7 @@ public class UaUserLayer {
 		showArrowInMessage(proxyName, userTo, messageType);
 		
 		state = COMPLETED_A;
-		System.out.println("Estado: COMPLETED");
+		System.out.println("Estado: COMPLETED"+"\n");
 		
 		String userURIstring = userURI.substring(0, userURI.indexOf("@"));
 		if(serviceUnavailableMessage.getFromName().equalsIgnoreCase(userURIstring)) {
@@ -299,16 +300,17 @@ public class UaUserLayer {
 			state = TERMINATED_A;
 			showArrowInMessage(byeMessage.getToName(), byeMessage.getFromName(), messageType);
 			commandOK("");
-			System.out.println("Estado: IDLE");
+			System.out.println("Estado: IDLE"+"\n");
 		}
 		else
 		{
 			state = TERMINATED_A;
 			showArrowInMessage(byeMessage.getFromName(), byeMessage.getToName(), messageType);
 			commandOK("");
-			System.out.println("Estado: IDLE");
+			System.out.println("Estado: IDLE"+"\n");
 		}
 		state = IDLE;
+		promptIdle();
 	
 		runVitextServer();
 	}
@@ -424,7 +426,7 @@ public class UaUserLayer {
 		{
 			this.Message = "s";
 			state = TERMINATED_B;
-			System.out.println("Estado: TERMINATED");
+			System.out.println("Estado: TERMINATED"+"\n");
 			commandOK("");
 			prompt();
 			//state = IDLE;
@@ -434,7 +436,7 @@ public class UaUserLayer {
 		{
 			this.Message = "n";
 			state = COMPLETED_B;
-			System.out.println("Estado: COMPLETED");
+			System.out.println("Estado: COMPLETED"+"\n");
 			commandBusy("");
 		}
 		else if(line.equalsIgnoreCase("BYE"))
@@ -445,7 +447,7 @@ public class UaUserLayer {
 			}
 		}
 		else {
-			System.out.println("Bad command");
+			System.out.println("Bad command"+"\n");
 		}
 	}
 
@@ -787,7 +789,6 @@ public class UaUserLayer {
 	
 	private void ringingTimer() {
 		Timer timer = new Timer();
-		System.out.println("Ringing... ");
 		int time = 2;
 		TimerTask task = new TimerTask() {
 			int counter=0;
@@ -800,7 +801,6 @@ public class UaUserLayer {
 		       	}
 		       	else if(counter>10) {
 		        	try {
-		        		//System.out.println(commandTimeout("").toStringMessage());
 		        		commandTimeout("");
 		        		timer.cancel();
 					} catch (IOException e) {
@@ -846,7 +846,7 @@ public class UaUserLayer {
 			    }
 			};
 
-			timer.scheduleAtFixedRate(task, 0, time*1000);
+			timer.scheduleAtFixedRate(task, 0, time*100);
 		}
 		
 		else if(sipMessage instanceof RequestTimeoutMessage) {
