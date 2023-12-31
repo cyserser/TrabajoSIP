@@ -40,8 +40,6 @@ public class UaUserLayer {
 	private static final int COMPLETED_B = 6;
 	private static final int TERMINATED_B = 7;
 	
-	private ProxyWhiteListArray whiteList;
-	
 	private int state = IDLE;
 	private String Message = "";
 	private String proxyName = "sip:proxy";
@@ -139,6 +137,10 @@ public class UaUserLayer {
 		}
 		else 
 		{
+			/*System.out.println("ddddddddddddd: " + isisDisconnectedD);
+			if(isDisconnected) {
+				commandInvite("", state);
+			}*/
 			showArrowInMessage(proxyName, userURIString, messageType);
 		}
 		
@@ -562,7 +564,7 @@ public class UaUserLayer {
 		timeout.setFromUri("sip:"+userA+"@SMA");
 		timeout.setCallId(callId);
 		timeout.setcSeqNumber("1");
-		timeout.setcSeqStr("REGISTER");
+		timeout.setcSeqStr("TIMEOUT");
 		timeout.setContentLength(timeout.toStringMessage().getBytes().length);
 		
 		String messageType = timeout.toStringMessage();
@@ -590,7 +592,7 @@ public class UaUserLayer {
 		ringingMessage.setFromUri("sip:"+userA+"@SMA");
 		ringingMessage.setCallId(callId);
 		ringingMessage.setcSeqNumber("1");
-		ringingMessage.setcSeqStr("REGISTER");
+		ringingMessage.setcSeqStr("INVITE");
 		ringingMessage.setContentLength(ringingMessage.toStringMessage().getBytes().length);
 		
 		String messageType = ringingMessage.toStringMessage();
@@ -693,7 +695,7 @@ public class UaUserLayer {
 		ACKMessage.setFromUri("sip:"+userA+"@SMA");
 		ACKMessage.setCallId(callId);
 		ACKMessage.setcSeqNumber("1");
-		ACKMessage.setcSeqStr("INVITE");
+		ACKMessage.setcSeqStr("ACK");
 		ACKMessage.setDestination("sip:"+userA+"@SMA");
 		
 		String messageType = ACKMessage.toStringMessage();
@@ -716,7 +718,7 @@ public class UaUserLayer {
 		ACKMessage.setFromUri("sip:"+userA+"@SMA");
 		ACKMessage.setCallId(callId);
 		ACKMessage.setcSeqNumber("1");
-		ACKMessage.setcSeqStr("INVITE");
+		ACKMessage.setcSeqStr("ACK");
 		ACKMessage.setDestination("sip:"+userA+"@SMA");
 		
 		String messageType = ACKMessage.toStringMessage();
@@ -749,7 +751,7 @@ public class UaUserLayer {
 		byeMessage.setFromUri("sip:"+userA+"@SMA");
 		byeMessage.setCallId(callId);
 		byeMessage.setcSeqNumber("1");
-		byeMessage.setcSeqStr("INVITE");
+		byeMessage.setcSeqStr("BYE");
 		
 		String messageType = byeMessage.toStringMessage();
 		showArrowInMessage(userA, userB, messageType);
@@ -891,6 +893,14 @@ public class UaUserLayer {
 				{
 					isDisconnected = true;
 					System.out.println("user expired!");
+					
+					// Nos registramos de nuevo
+					/*try {
+						//commandRegister("", state);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}*/
 					timer.cancel();	
 	    		}
 	    	}
@@ -925,7 +935,7 @@ public class UaUserLayer {
 				+ " " + from + " -> " + to;
 		String[] splittedMessage = messageType.split("\n", 2);
 		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: messageType);
+		messageToPrint = ((this.firstLine.equals("false")) ? splittedMessage[0]: messageType);
 		System.out.println(commInfo);
 		System.out.println(messageToPrint + "\n");
 	}

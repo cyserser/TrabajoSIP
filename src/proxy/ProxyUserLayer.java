@@ -716,7 +716,7 @@ public class ProxyUserLayer {
 				+ " " + from + " -> " + to;
 		String[] splittedMessage = messageType.split("\n", 2);
 		String messageToPrint;
-		messageToPrint = ((this.firstLine.equals("true")) ? splittedMessage[0]: messageType);
+		messageToPrint = ((this.firstLine.equals("false")) ? splittedMessage[0]: messageType);
 		System.out.println(commInfo);
 		System.out.println(messageToPrint + "\n");
 	}
@@ -746,6 +746,7 @@ public class ProxyUserLayer {
 		
 		timer.scheduleAtFixedRate(task, 0, 1000);
 	}
+	
 	
 	// Metodo para añadir las vias generico para diferentes tipos de mensajes
 	private void addViasMethod(SIPMessage sipMessage) {
