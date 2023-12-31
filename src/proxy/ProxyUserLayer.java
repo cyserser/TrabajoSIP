@@ -447,6 +447,8 @@ public class ProxyUserLayer {
 		String messageType = notFoundMessage.toStringMessage();
 		showArrowInMessage(proxyName, userA, messageType);
 		
+		System.out.println("Estado llamante: COMPLETED"+"\n");
+		
 		// Iniciamos el temporizador
 		ACKTimer2(notFoundMessage, port, address);
 		
@@ -665,7 +667,6 @@ public class ProxyUserLayer {
 	// ACK
 	private ACKMessage ACKMessage() throws IOException {
 		
-		System.out.println(userA);
 		int port = 0;
 		String address = "";
 		for(int i = 0; i < whiteList.getWhiteList().size(); i++)
