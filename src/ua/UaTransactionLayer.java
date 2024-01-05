@@ -175,6 +175,9 @@ public class UaTransactionLayer {
 		}
 		
 	}
+	public void callOK(OKMessage okMessage) throws IOException {
+		transportLayer.sendToProxy(okMessage);
+	}
 	
 	// 408 Time out
 	public void callTimeout(RequestTimeoutMessage timeoutMessage) throws IOException {
@@ -199,5 +202,10 @@ public class UaTransactionLayer {
 	// BYE
 	public void callBye(ByeMessage byeMessage, String addressA, int portA) throws IOException {
 		transportLayer.send(byeMessage, addressA, portA);
+	}
+	
+	// BYE proxy
+	public void callBye(ByeMessage byeMessage) throws IOException {
+		transportLayer.sendToProxy(byeMessage);
 	}
 }

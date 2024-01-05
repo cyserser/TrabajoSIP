@@ -52,15 +52,20 @@ public class ProxyTransactionLayer {
 		}
 		else if (sipMessage instanceof RequestTimeoutMessage) {
 			RequestTimeoutMessage timeoutMessage = (RequestTimeoutMessage) sipMessage;
-			userLayer.onRequestTimeoutReceived(timeoutMessage);;
+			userLayer.onRequestTimeoutReceived(timeoutMessage);
 		}
 		else if (sipMessage instanceof BusyHereMessage) {
 			BusyHereMessage busyHereMessage = (BusyHereMessage) sipMessage;
-			userLayer.onBusyHereReceived(busyHereMessage);;
+			userLayer.onBusyHereReceived(busyHereMessage);
 		}
 		else if (sipMessage instanceof ACKMessage) {
 			ACKMessage ACKMessage = (ACKMessage) sipMessage;
-			userLayer.onACKReceived(ACKMessage);;
+			userLayer.onACKReceived(ACKMessage);
+		}
+		else if(sipMessage instanceof ByeMessage)
+		{
+			ByeMessage byeMessage = (ByeMessage) sipMessage;
+			userLayer.onByeReceived(byeMessage);
 		}
 		else {
 			System.err.println("Unexpected message, throwing away (REST)");
@@ -117,6 +122,7 @@ public class ProxyTransactionLayer {
 	public void echoBye(ByeMessage byeMessage, String address, int port) throws IOException {
 		transportLayer.send(byeMessage, address, port);
 	}
+	
 		
 	public void startListening() {
 		transportLayer.startListening();

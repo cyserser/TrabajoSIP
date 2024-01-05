@@ -17,6 +17,7 @@ import mensajesSIP.SIPMessage;
 import mensajesSIP.TryingMessage;
 import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.BusyHereMessage;
+import mensajesSIP.ByeMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.ACKMessage;
 
@@ -35,11 +36,16 @@ public class ProxyUserLayer {
 	private static final int PROCEEDING_B = 5;
 	private static final int COMPLETED_B = 6;
 	private static final int TERMINATED_B = 7;
+
+	private static final int PROXY_ON = 10;
+	private static final int PROXY_OFF = 20;
 	
 	private int stateA;
 	private int stateB;
+	private int proxystate;
 	
 	private String firstLine;
+	private String looseRouting;
 	private String userA;
 	private String userB;
 	private String proxyName = "sip:proxy";
@@ -48,10 +54,11 @@ public class ProxyUserLayer {
 	private boolean isACKReceived;
 	private Timer timer;
 	
-	public ProxyUserLayer(int listenPort, String firstLine) throws SocketException {
+	public ProxyUserLayer(int listenPort, String firstLine, String looseRouting) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
 		this.whiteList = new ProxyWhiteListArray();
 		this.firstLine = firstLine;
+		this.looseRouting = looseRouting;
 	}
 	
 	// Setteamos las direccion y puerto del proxy
@@ -64,7 +71,7 @@ public class ProxyUserLayer {
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
 		//REDUCIMOS EL MAXFORWARDS
 		inviteMessage.setMaxForwards(inviteMessage.getMaxForwards()-1);
-		
+		looseRouting();
 		int whiteListSize = whiteList.getWhiteList().size();
 		userA=inviteMessage.getFromName();
 		userB=inviteMessage.getToName();
@@ -108,9 +115,20 @@ public class ProxyUserLayer {
 						// Informar al LLAMANTE de que se esta intentando
 						transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
 						
+						// CON RECORD ROUTE AÑADIMOS LA CABECERA RECORD-ROUTE AL INVITE
+						addRecordRoute(inviteMessage, origin);
+						
+						// SI TENEMOS LOOSE ROUTING Y SE CONECTA OTRO TERCERO MANDAMOS 503
+						if(this.looseRouting.equals("true"))
+						{
+							transactionLayer.echoServiceUnavailable(ServiceUnavailableMessage(), originAddress,originPort);
+							return;
+						}
+						
 						// INVITAMOS AL LLAMADO
 						messageType = inviteMessage.toStringMessage();
 						showArrowInMessage(proxyName, userB, messageType);
+						
 						transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
 						
 						return;
@@ -157,6 +175,8 @@ public class ProxyUserLayer {
 					
 					// añadimos las vias
 					addViasMethod(inviteMessage);
+					// CON RECORD ROUTE AÑADIMOS LA CABECERA RECORD-ROUTE AL INVITE
+					addRecordRoute(inviteMessage, origin);
 					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
 					
 					messageType = inviteMessage.toStringMessage();
@@ -177,6 +197,8 @@ public class ProxyUserLayer {
 		// Si el llamado no esta conectado/registrado
 		transactionLayer.echoNotfound(NotFoundMessage(false), originAddress, originPort);
 	}
+
+	
 
 	
 	
@@ -369,14 +391,65 @@ public class ProxyUserLayer {
 	// on ACK received
 	public void onACKReceived(ACKMessage ACKMessage) throws IOException {
 		String messageType = ACKMessage.toStringMessage();
-		showArrowInMessage(userA, proxyName, messageType);
-			
+		if(this.looseRouting.equals("true"))
+		{
+			showArrowInMessage(userA, proxyName, messageType);
+			ACKMessage.setRoute(null); // Eliminamos la cabecera de ROUTE
+		}
+		else //Si no hay loose routing
+		{
+			showArrowInMessage(userA, proxyName, messageType);
+		}
+		
+		
 		isACKReceived = true;
 		
 		if(timer != null)
 		{
 			timer.cancel();
 			timer.purge();
+		}
+		
+		String destinationAddress = "";
+		int destinationPort = 0;
+		int whiteListSize = whiteList.getWhiteList().size();
+		for(int i = 0; i < whiteListSize; i++)
+		{
+			if(getFromWhiteList(i).equalsIgnoreCase(ACKMessage.getToName())) {
+				destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
+				destinationPort = whiteList.getWhiteList().get(i).getUserPort();
+				showArrowInMessage(proxyName, userB, messageType);
+				transactionLayer.echoACK(ACKMessage, destinationAddress, destinationPort);
+				return;
+			}
+		}
+	}
+	
+	// on BYE received
+	public void onByeReceived(ByeMessage byeMessage) throws IOException {
+		String messageType = byeMessage.toStringMessage();
+		if(this.looseRouting.equals("true"))
+		{
+			showArrowInMessage(userB, proxyName, messageType);
+			byeMessage.setRoute(null); // Eliminamos la cabecera de ROUTE
+		}
+		else //Si no hay loose routing
+		{
+			showArrowInMessage(userB, proxyName, messageType);
+		}
+		
+		String destinationAddress = "";
+		int destinationPort = 0;
+		int whiteListSize = whiteList.getWhiteList().size();
+		for(int i = 0; i < whiteListSize; i++)
+		{/// En el bye ES from INVERSO
+			if(getFromWhiteList(i).equalsIgnoreCase(byeMessage.getToName())) {
+				destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
+				destinationPort = whiteList.getWhiteList().get(i).getUserPort();
+				showArrowInMessage(proxyName, userA, messageType);
+				transactionLayer.echoBye(byeMessage, destinationAddress, destinationPort);
+				return;
+			}
 		}
 	}
 	
@@ -720,6 +793,30 @@ public class ProxyUserLayer {
 		messageToPrint = ((this.firstLine.equals("false")) ? splittedMessage[0]: messageType);
 		System.out.println(commInfo);
 		System.out.println(messageToPrint + "\n");
+	}
+	
+	private void looseRouting()
+	{
+		if(this.looseRouting.equals("true"))
+		{
+			System.out.println("Hemos activado looseRouting");
+		}
+		else
+		{
+			System.out.println("No esta activado looseRouting");
+		}
+	}
+	
+	/**
+	 * Añadimos el campo record route al mensaje INVITE si esta habilitado el loose routing.
+	 * @param inviteMessage
+	 */
+	private void addRecordRoute(InviteMessage inviteMessage, String lr) {
+		if(this.looseRouting.equals("true"))
+		{
+			//String lrString = "<sip:" + lr + ";lr>";
+			inviteMessage.setRecordRoute(lr);
+		}
 	}
 	
 	private void expiresCounter(int expiresTime, String expiredUser) {

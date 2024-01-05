@@ -20,7 +20,6 @@ import mensajesSIP.SDPMessage;
 import mensajesSIP.SIPMessage;
 import mensajesSIP.ServiceUnavailableMessage;
 import mensajesSIP.TryingMessage;
-import proxy.ProxyWhiteListArray;
 import mensajesSIP.RingingMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ByeMessage;
@@ -62,7 +61,8 @@ public class UaUserLayer {
 	private int puertoB; // llamado
 	private boolean isDisconnected = true;
 	private boolean isACKReceived;
-
+	private boolean isLooseRouting;
+	private String looseRoutingString;
 	private Process vitextClient = null;
 	private Process vitextServer = null;
 
@@ -83,6 +83,9 @@ public class UaUserLayer {
 		
 		String messageType = inviteMessage.toStringMessage();
 		showArrowInMessage(proxyName, userB, messageType);
+		
+		// Si loose routing
+		addRecordRoute(inviteMessage);
 		
 		ArrayList<String> vias = inviteMessage.getVias();
 		String origin = vias.get(0);
@@ -106,6 +109,8 @@ public class UaUserLayer {
 		prompt();
 		runVitextServer();
 	}
+
+	
 	
 	// OK MESSAGE RECEIVED
 	public void onOKReceived(OKMessage okMessage) throws IOException {
@@ -114,15 +119,25 @@ public class UaUserLayer {
 		userA = okMessage.getFromName();
 		userB = okMessage.getToName();
 		
+		// RecordRoute (LLAMADO)
+		addRecordRoute(okMessage);
+		
 		String userURIString = userURI.substring(0, userURI.indexOf("@"));
 		String messageType = okMessage.toStringMessage();
-
-		// Cuando el proxy ya no esta 
+		// Una vez establecido la llamada
 		if (state == TERMINATED_B || state == TERMINATED_A) {
 			messageType = okMessage.toStringMessage();
-			showArrowInMessage(userB, userURIString, messageType);
-			System.out.println("Estado: IDLE"+"\n");
-
+			if(this.isLooseRouting)
+			{
+				showArrowInMessage(proxyName, userURIString, messageType);
+				System.out.println("Estado: IDLE"+"\n");	
+			}
+			else
+			{
+				showArrowInMessage(userB, userURIString, messageType);
+				System.out.println("Estado: IDLE"+"\n");
+			}
+			
 			state = IDLE;
 		}
 		else if(state == CALLING || state == PROCEEDING_A) {
@@ -133,22 +148,25 @@ public class UaUserLayer {
 			System.out.println("Estado: TERMINATED"+"\n");
 			
 			//Se establece la llamada y comienza a enviarse ACK
-			commandACK(this.listenPort, puertoB);
+			if(this.isLooseRouting)
+			{
+				commandACK();
+			}
+			else // Si no hay loose routing va extremo a extremo
+			{
+				commandACK(this.listenPort, puertoB);
+			}
 		}
 		else 
 		{
-			/*System.out.println("ddddddddddddd: " + isisDisconnectedD);
-			if(isDisconnected) {
-				commandInvite("", state);
-			}*/
 			showArrowInMessage(proxyName, userURIString, messageType);
 		}
-		
+	
 		isDisconnected = false;
 		
 		prompt();
 		
-		runVitextServer();
+		//runVitextServer();
 	}
 
 	
@@ -276,7 +294,10 @@ public class UaUserLayer {
 		if(state == TERMINATED_B || state == TERMINATED_A)
 		{
 			messageType = ACKMessage.toStringMessage();
-			showArrowInMessage(ACKMessage.getFromName(), ACKMessage.getToName(), messageType);
+			if(!this.isLooseRouting)
+			{
+				showArrowInMessage(ACKMessage.getFromName(), ACKMessage.getToName(), messageType);
+			}
 			System.out.println("Type BYE to finish");
 		}
 		
@@ -295,19 +316,33 @@ public class UaUserLayer {
 	
 		String messageType = byeMessage.toStringMessage();
 		
-		//OKMessage okMessage = new OKMessage();
-		
+			
 		if(this.listenPort == originPort)
 		{
 			state = TERMINATED_A;
-			showArrowInMessage(byeMessage.getToName(), byeMessage.getFromName(), messageType);
+			if(this.isLooseRouting)
+			{
+				showArrowInMessage(proxyName, byeMessage.getFromName(), messageType);
+			}
+			else
+			{
+				showArrowInMessage(byeMessage.getToName(), byeMessage.getFromName(), messageType);
+			}
 			commandOK("");
 			System.out.println("Estado: IDLE"+"\n");
 		}
 		else
 		{
 			state = TERMINATED_A;
-			showArrowInMessage(byeMessage.getFromName(), byeMessage.getToName(), messageType);
+			if(this.isLooseRouting)
+			{
+				showArrowInMessage(proxyName, byeMessage.getToName(), messageType);
+			}
+			else
+			{
+				showArrowInMessage(byeMessage.getFromName(), byeMessage.getToName(), messageType);
+			}
+			
 			commandOK("");
 			System.out.println("Estado: IDLE"+"\n");
 		}
@@ -635,19 +670,35 @@ public class UaUserLayer {
 		okMessage.setcSeqNumber("1");
 		okMessage.setcSeqStr("INVITE");
 		okMessage.setContact(this.myAddress + ":" + this.listenPort);
-		
-		prompt();
-		
-		if(state == TERMINATED_A) {
+		if(this.isLooseRouting)
+		{
+			String lr = looseRoutingString;
+			okMessage.setRecordRoute(lr);
+			
+			String messageType = okMessage.toStringMessage();
+			showArrowInMessage(userB, proxyName, messageType);
+			transactionLayer.callOK(okMessage);
+		}
+		else
+		{
+			if(state == TERMINATED_A) {
 			String messageType = okMessage.toStringMessage();
 			showArrowInMessage(userB, userA, messageType);
 			transactionLayer.callOK(okMessage, this.myAddress, puertoB);
+			
+			}
+			else if (state == TERMINATED_B) {
+				String messageType = okMessage.toStringMessage();
+				showArrowInMessage(userB, proxyName, messageType);
+				transactionLayer.callOK(okMessage,"",0);
+			}
+			//String messageType = okMessage.toStringMessage();
+			//showArrowInMessage(userB, userA, messageType);
+			//transactionLayer.callOK(okMessage, this.myAddress, puertoB);
 		}
-		else if (state == TERMINATED_B) {
-			String messageType = okMessage.toStringMessage();
-			showArrowInMessage(userB, proxyName, messageType);
-			transactionLayer.callOK(okMessage,"",0);
-		}
+		
+		prompt();
+		
 		
 	}
 	
@@ -699,10 +750,14 @@ public class UaUserLayer {
 		ACKMessage.setcSeqNumber("1");
 		ACKMessage.setcSeqStr("ACK");
 		ACKMessage.setDestination("sip:"+userA+"@SMA");
-		
+		if(this.isLooseRouting && this.Message.equals("OK"))
+		{
+			ACKMessage.setRoute(looseRoutingString);
+		}
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(userA, userB, messageType);
 		
+		//SI NO HAY LOOSE ROUTING
 		transactionLayer.callACK(ACKMessage, this.myAddress, puertoB);
 	}
 	
@@ -722,6 +777,10 @@ public class UaUserLayer {
 		ACKMessage.setcSeqNumber("1");
 		ACKMessage.setcSeqStr("ACK");
 		ACKMessage.setDestination("sip:"+userA+"@SMA");
+		if(this.isLooseRouting && this.Message.equals("OK"))
+		{
+			ACKMessage.setRoute(looseRoutingString);
+		}
 		
 		String messageType = ACKMessage.toStringMessage();
 		showArrowInMessage(userA, proxyName, messageType);
@@ -754,11 +813,19 @@ public class UaUserLayer {
 		byeMessage.setCallId(callId);
 		byeMessage.setcSeqNumber("1");
 		byeMessage.setcSeqStr("BYE");
-		
-		String messageType = byeMessage.toStringMessage();
-		showArrowInMessage(userA, userB, messageType);
-		
-		transactionLayer.callBye(byeMessage, this.myAddress, puertoB);
+		if(this.isLooseRouting)
+		{
+			byeMessage.setRoute(looseRoutingString);
+			String messageType = byeMessage.toStringMessage();
+			showArrowInMessage(userA, proxyName, messageType);
+			transactionLayer.callBye(byeMessage);
+		}
+		else
+		{
+			String messageType = byeMessage.toStringMessage();
+			showArrowInMessage(userA, userB, messageType);
+			transactionLayer.callBye(byeMessage, this.myAddress, puertoB);
+		}
 	}
 	
 	// Temporizadores
@@ -801,7 +868,7 @@ public class UaUserLayer {
 		        	//System.err.println("RINGING TIMER BUG");
 		       		timer.cancel();
 		       	}
-		       	else if(counter>10) {
+		       	else if(counter>1000) {
 		        	try {
 		        		commandTimeout("");
 		        		timer.cancel();
@@ -930,6 +997,13 @@ public class UaUserLayer {
 	
 	
 	/// METODOS AUXILIARES
+	/**
+	 * Muestra con una flecha el significado del mensaje, pero tambien muestra el mensaje
+	 * completo si esta a true el parametro firstline.
+	 * @param from
+	 * @param to
+	 * @param messageType
+	 */
 	private void showArrowInMessage(String from, String to, String messageType) { 
 		String commInfo = messageType.substring(0,messageType.indexOf(" "))
 				+ " " + from + " -> " + to;
@@ -938,6 +1012,56 @@ public class UaUserLayer {
 		messageToPrint = ((this.firstLine.equals("false")) ? splittedMessage[0]: messageType);
 		System.out.println(commInfo);
 		System.out.println(messageToPrint + "\n");
+	}
+	
+	/**
+	 * Extrae del mensaje invite las vias (cuando UA llamado recibe esto, entonces conten-
+	 * tra todos todas las vías por las que ha pasado...)
+	 * @param inviteMessage
+	 */
+	private void addRecordRoute(SIPMessage sipMessage) {
+		
+		if (sipMessage instanceof InviteMessage) {
+			InviteMessage inviteMessage = (InviteMessage) sipMessage;
+			
+			if(inviteMessage.getRecordRoute()!=null)
+			{
+				// Solo de los UAs
+				looseRoutingString = inviteMessage.getVias().get(0);
+				this.isLooseRouting = true;
+			}
+			
+		} 
+		else if(sipMessage instanceof OKMessage)
+		{
+			OKMessage okMessage = (OKMessage) sipMessage;
+			if(okMessage.getRecordRoute()!=null)
+			{
+				looseRoutingString = okMessage.getVias().get(0);
+				this.isLooseRouting = true;
+			}
+		}
+		/*else if(sipMessage instanceof ACKMessage)
+		{
+			ACKMessage ackMessage = (ACKMessage) sipMessage;
+			if(ackMessage.getRoute()!=null)
+			{
+				// Solo de los UAs
+				looseRoutingString = ackMessage.getVias().get(0);
+				this.isLooseRouting = true;
+			}
+		}
+		else if(sipMessage instanceof ByeMessage)
+		{
+			ByeMessage byeMessage = (ByeMessage) sipMessage;
+			if(byeMessage.getRoute()!=null)
+			{
+				// Solo de los UAs
+				looseRoutingString = byeMessage.getVias().get(0);
+				this.isLooseRouting = true;
+			}
+		}*/
+		
 	}
 
 }
