@@ -116,7 +116,8 @@ public class ProxyUserLayer {
 						transactionLayer.echoTrying(TryingMessage(), originAddress,originPort);
 						
 						// CON RECORD ROUTE AÑADIMOS LA CABECERA RECORD-ROUTE AL INVITE
-						addRecordRoute(inviteMessage, origin);
+						String lr = proxyAddress+":"+proxyPort;
+						addRecordRoute(inviteMessage, lr);
 						
 						// SI TENEMOS LOOSE ROUTING Y SE CONECTA OTRO TERCERO MANDAMOS 503
 						if(this.looseRouting.equals("true"))
@@ -176,7 +177,8 @@ public class ProxyUserLayer {
 					// añadimos las vias
 					addViasMethod(inviteMessage);
 					// CON RECORD ROUTE AÑADIMOS LA CABECERA RECORD-ROUTE AL INVITE
-					addRecordRoute(inviteMessage, origin);
+					String lr = proxyAddress+":"+proxyPort;
+					addRecordRoute(inviteMessage, lr);
 					transactionLayer.echoInvite(inviteMessage, destinationAddress, destinationPort);
 					
 					messageType = inviteMessage.toStringMessage();
@@ -413,8 +415,17 @@ public class ProxyUserLayer {
 		String destinationAddress = "";
 		int destinationPort = 0;
 		int whiteListSize = whiteList.getWhiteList().size();
+		
+		if(stateA == TERMINATED_A && stateB == TERMINATED_B) {
+			if(ACKMessage.getToName().equals(ACKMessage.getFromName())) {
+				return;
+			}
+		}
+		
+		messageType = ACKMessage.toStringMessage();
+		
 		for(int i = 0; i < whiteListSize; i++)
-		{
+		{	
 			if(getFromWhiteList(i).equalsIgnoreCase(ACKMessage.getToName())) {
 				destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				destinationPort = whiteList.getWhiteList().get(i).getUserPort();
@@ -423,30 +434,36 @@ public class ProxyUserLayer {
 				return;
 			}
 		}
+		
 	}
 	
 	// on BYE received
 	public void onByeReceived(ByeMessage byeMessage) throws IOException {
 		String messageType = byeMessage.toStringMessage();
+		userA = byeMessage.getFromName();
+		userB = byeMessage.getToName();
 		if(this.looseRouting.equals("true"))
 		{
-			showArrowInMessage(userB, proxyName, messageType);
+			showArrowInMessage(userA, proxyName, messageType);
 			byeMessage.setRoute(null); // Eliminamos la cabecera de ROUTE
 		}
 		else //Si no hay loose routing
 		{
-			showArrowInMessage(userB, proxyName, messageType);
+			showArrowInMessage(userA, proxyName, messageType);
 		}
 		
 		String destinationAddress = "";
 		int destinationPort = 0;
 		int whiteListSize = whiteList.getWhiteList().size();
+		
+		messageType = byeMessage.toStringMessage();
+		
 		for(int i = 0; i < whiteListSize; i++)
 		{/// En el bye ES from INVERSO
 			if(getFromWhiteList(i).equalsIgnoreCase(byeMessage.getToName())) {
 				destinationAddress = whiteList.getWhiteList().get(i).getUserAddress();
 				destinationPort = whiteList.getWhiteList().get(i).getUserPort();
-				showArrowInMessage(proxyName, userA, messageType);
+				showArrowInMessage(proxyName, userB, messageType);
 				transactionLayer.echoBye(byeMessage, destinationAddress, destinationPort);
 				return;
 			}

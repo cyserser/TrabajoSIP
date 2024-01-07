@@ -58,6 +58,8 @@ public class UaUserLayer {
 	private String userB;
 	private String firstLine;
 	private String expiresTime;
+	private String proxyAddress;
+	private int proxyPort;
 	private int puertoB; // llamado
 	private boolean isDisconnected = true;
 	private boolean isACKReceived;
@@ -74,6 +76,8 @@ public class UaUserLayer {
 		this.userURI = userURI;
 		this.firstLine = firstLine;
 		this.expiresTime = expiresTime;
+		this.proxyAddress = proxyAddress;
+		this.proxyPort = proxyPort;
 	}
 
 	public void onInviteReceived(InviteMessage inviteMessage) throws IOException {
@@ -1027,7 +1031,7 @@ public class UaUserLayer {
 			if(inviteMessage.getRecordRoute()!=null)
 			{
 				// Solo de los UAs
-				looseRoutingString = inviteMessage.getVias().get(0);
+				looseRoutingString = proxyAddress+":"+proxyPort;
 				this.isLooseRouting = true;
 			}
 			
@@ -1037,7 +1041,7 @@ public class UaUserLayer {
 			OKMessage okMessage = (OKMessage) sipMessage;
 			if(okMessage.getRecordRoute()!=null)
 			{
-				looseRoutingString = okMessage.getVias().get(0);
+				looseRoutingString = proxyAddress+":"+proxyPort;
 				this.isLooseRouting = true;
 			}
 		}
