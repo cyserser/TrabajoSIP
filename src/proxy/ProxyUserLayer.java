@@ -1,12 +1,16 @@
 package proxy;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Unmarshaller;
 
 import mensajesSIP.InviteMessage;
 import mensajesSIP.RegisterMessage;
@@ -15,6 +19,14 @@ import mensajesSIP.OKMessage;
 import mensajesSIP.NotFoundMessage;
 import mensajesSIP.SIPMessage;
 import mensajesSIP.TryingMessage;
+import sipServlet.AliceSIPServlet;
+import sipServlet.BobSIPServlet;
+import sipServlet.JuanSIPServlet;
+import sipServlet.ServletClass;
+import sipServlet.SipServletRequest;
+import sipServlet.User;
+import sipServlet.Users;
+import sipServlet.UsersServletReader;
 import mensajesSIP.RequestTimeoutMessage;
 import mensajesSIP.BusyHereMessage;
 import mensajesSIP.ByeMessage;
@@ -37,12 +49,12 @@ public class ProxyUserLayer {
 	private static final int COMPLETED_B = 6;
 	private static final int TERMINATED_B = 7;
 
-	private static final int PROXY_ON = 10;
-	private static final int PROXY_OFF = 20;
+	//private static final int PROXY_ON = 10;
+	//private static final int PROXY_OFF = 20;
 	
 	private int stateA;
 	private int stateB;
-	private int proxystate;
+	//private int proxystate;
 	
 	private String firstLine;
 	private String looseRouting;
@@ -54,11 +66,47 @@ public class ProxyUserLayer {
 	private boolean isACKReceived;
 	private Timer timer;
 	
+	private String servletAlice = null;
+	private String servletBob = null;
+	private String servletJuan = null;
+	
+	public static String servletToInvite;
+	public static boolean denyCall = false;
+	
 	public ProxyUserLayer(int listenPort, String firstLine, String looseRouting) throws SocketException {
 		this.transactionLayer = new ProxyTransactionLayer(listenPort, this);
 		this.whiteList = new ProxyWhiteListArray();
 		this.firstLine = firstLine;
 		this.looseRouting = looseRouting;
+		
+		//LEEMOS ARCHIVO .XML
+		try (InputStream xml = UsersServletReader.class
+				.getResourceAsStream("users.xml");) {
+			JAXBContext jaxbContext = JAXBContext.newInstance(Users.class);
+			Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
+			Users users = (Users) jaxbUnmarshaller.unmarshal(xml);
+			
+			for (User user : users.getListUsers()) {
+		        ServletClass servletClass = user.getServletClass();
+		        if (servletClass != null) {
+		            String name = servletClass.getName();
+		            
+		            if (user.getId().equals("sip:alice@SMA")) {
+		            	servletAlice = name;
+		            }
+		            else if (user.getId().equals("sip:bob@SMA")) {
+		            	servletBob = name;
+		            }
+		            else if (user.getId().equals("sip:juan@SMA")) {
+		            	servletJuan = name;
+		            }
+		            System.out.println("Atributo 'name' para " + user.getId() + ": " + name);
+		        }
+		    }
+		} catch (Exception e) {
+			System.err.println(e.getMessage());
+			e.printStackTrace();
+		}
 	}
 	
 	// Setteamos las direccion y puerto del proxy
@@ -170,6 +218,46 @@ public class ProxyUserLayer {
 				int destinationPort = whiteList.getWhiteList().get(i).getUserPort();
 				
 				// El usuario puede estar en la lista pero no estar registrado
+		
+				
+				//SERVLETS
+				if(userB.equals("alice")) {
+					String calleeServlet = servletAlice;
+					if(servletAlice == null) {
+						AliceSIPServlet aliceSIPServlet = new AliceSIPServlet();
+						SipServletRequest sipServletRequest = new SipServletRequest(inviteMessage);
+						aliceSIPServlet.doInvite(sipServletRequest);
+					}
+					else {
+						
+					}
+					
+				}
+				else if(userB.equals("bob")) {
+					String calleeServlet = servletBob;
+					if(servletBob == null) {
+						BobSIPServlet bobSIPServlet = new BobSIPServlet();
+						SipServletRequest sipServletRequest = new SipServletRequest(inviteMessage);
+						bobSIPServlet.doInvite(sipServletRequest);
+					}
+					else {
+						
+					}
+					
+				}
+				else if(userB.equals("juan")) {
+					String calleeServlet = servletJuan;
+					if(servletJuan == null) {
+						JuanSIPServlet juanSIPServlet = new JuanSIPServlet();
+						SipServletRequest sipServletRequest = new SipServletRequest(inviteMessage);
+						juanSIPServlet.doInvite(sipServletRequest);
+					}
+					else {
+						
+					}
+					
+				}
+				
 				if(destinationPort!=0)
 				{
 					// INVITAMOS AL LLAMADO

@@ -1,6 +1,6 @@
 package sipServlet;
 
-public class SIPServlet implements SIPServletInterface{
+public class JuanSIPServlet implements SIPServletInterface{
 
 	@Override
 	public void doInvite(SipServletRequestInterface request) {

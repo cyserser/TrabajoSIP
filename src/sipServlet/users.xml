@@ -5,4 +5,7 @@
 	<user id="sip:bob@SMA">
 		<Servlet-class name="sipServlet.BobSIPServlet" />
 	</user>
+	<user id="sip:juan@SMA">
+		<Servlet-class name="sipServlet.JuanSIPServlet" />
+	</user>
 </users>
