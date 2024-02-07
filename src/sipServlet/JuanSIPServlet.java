@@ -10,7 +10,7 @@ public class JuanSIPServlet implements SIPServletInterface{
 		int current_hour;
 		Calendar cal = Calendar.getInstance();
 		current_hour = cal.get(Calendar.HOUR_OF_DAY);
-		if (current_hour>10 && current_hour<22) {
+		if (current_hour>16 && current_hour<24) {
 			request.getProxy().proxyTo(request.getCalleeURI());
 		} 
 		else {

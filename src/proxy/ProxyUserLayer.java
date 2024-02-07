@@ -223,43 +223,85 @@ public class ProxyUserLayer {
 				//SERVLETS
 				if(userB.equals("alice")) {
 					String calleeServlet = servletAlice;
-					if(servletAlice == null) {
+					if(servletAlice != null) {
 						AliceSIPServlet aliceSIPServlet = new AliceSIPServlet();
 						SipServletRequest sipServletRequest = new SipServletRequest(inviteMessage);
 						aliceSIPServlet.doInvite(sipServletRequest);
 					}
 					else {
-						
+						if(userA.equals("alice")){
+							
+						}
+						else if(userA.equals("bob")){
+							
+						}
+						else if(userA.equals("juan")){
+	
+						}
 					}
 					
 				}
 				else if(userB.equals("bob")) {
 					String calleeServlet = servletBob;
-					if(servletBob == null) {
+					if(servletBob != null) {
 						BobSIPServlet bobSIPServlet = new BobSIPServlet();
 						SipServletRequest sipServletRequest = new SipServletRequest(inviteMessage);
 						bobSIPServlet.doInvite(sipServletRequest);
 					}
 					else {
-						
+						if(userA.equals("alice")){
+							
+						}
+						else if(userA.equals("bob")){
+							
+						}
+						else if(userA.equals("juan")){
+	
+						}
 					}
 					
 				}
 				else if(userB.equals("juan")) {
 					String calleeServlet = servletJuan;
-					if(servletJuan == null) {
+					if(servletJuan != null) {
+						System.out.println("entra aqui");
 						JuanSIPServlet juanSIPServlet = new JuanSIPServlet();
 						SipServletRequest sipServletRequest = new SipServletRequest(inviteMessage);
 						juanSIPServlet.doInvite(sipServletRequest);
 					}
 					else {
-						
+						if(userA.equals("alice")){
+							
+						}
+						else if(userA.equals("bob")){
+							
+						}
+						else if(userA.equals("juan")){
+	
+						}
 					}
 					
 				}
 				
-				if(destinationPort!=0)
-				{
+				//COMPROBAMOS SI SE REDIRIGE LA LLAMADA A OTRO USUARIO O NO
+				if(servletToInvite != null) {
+					if(servletToInvite.equals(inviteMessage.getToUri())) {
+						System.out.println("no redirigimos la llamada");
+					}
+					else {
+						inviteMessage.setToUri(servletToInvite);
+						inviteMessage.setToName(servletToInvite.substring(0, servletToInvite.indexOf("@")));
+						
+						for(int j = 0; j < whiteListSize; j++){
+							if(getFromWhiteList(j).equalsIgnoreCase(inviteMessage.getToName())) {
+								destinationAddress = whiteList.getWhiteList().get(j).getUserAddress();
+								destinationPort = whiteList.getWhiteList().get(j).getUserPort();
+							}
+						}
+					}
+				}
+				
+				if(destinationPort!=0 && denyCall == false){
 					// INVITAMOS AL LLAMADO
 					
 					// añadimos las vias
@@ -279,6 +321,11 @@ public class ProxyUserLayer {
 					System.out.println("Estado Llamante: PROCEEDING");
 					System.out.println("Estado llamado: CALLING"+"\n");
 	
+					return;
+				}
+				else if(denyCall == true) {
+					System.out.println("LLAMADA RECHAZADA");
+					denyCall = false;
 					return;
 				}
 			}

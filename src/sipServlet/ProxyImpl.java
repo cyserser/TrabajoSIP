@@ -8,7 +8,6 @@ public class ProxyImpl implements ProxyInterface{
 	public void proxyTo(String uri) {
 		// TODO Auto-generated method stub
 		ProxyUserLayer.servletToInvite = uri;
-		
 	}
 
 }
